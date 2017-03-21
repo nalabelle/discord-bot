@@ -52,11 +52,11 @@ class Weather:
 
   def sensible_speed(self, speed_ms):
     """Given speed in meters/second returns kilometers/hour"""
-    return round(speed_ms * 3.6, 2)
+    return round(speed_ms * 3.6, 1)
 
   def freedom_speed(self, speed_ms):
     """Given speed in meters/second returns miles/hour"""
-    return round(speed_ms * 3.6 / 1.609344, 0)
+    return round(speed_ms * 3.6 / 1.609344, 1)
 
   def freedom_temp(self, degrees_c):
     """Given temperature in C, returns F"""
