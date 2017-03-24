@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys,os
+import signal
 import logging
 import asyncio
 import discord
@@ -16,6 +17,12 @@ except KeyError:
 
 logging.basicConfig(level=logging.DEBUG)
 
+def interrupt(signal, frame):
+  print("Exiting")
+  sys.exit(0)
+
+signal.signal(signal.SIGINT, interrupt)
+
 client = commands.Bot(command_prefix=commands.when_mentioned_or('!'), description="Testing")
 client.add_cog(Weather(client))
 client.add_cog(Giphy(client))
@@ -26,4 +33,15 @@ client.add_cog(Status(client))
 def on_ready():
   yield from client.change_presence(game=discord.Game(name="with gear oil"))
 
-client.run(token)
+while True:
+  try:
+    client.run(token)
+  except KeyboardInterrupt as e:
+    print("Exiting")
+    sys.exit(0)
+  except ConnectionResetError as e:
+    print("Connection Reset: {}".format(e))
+    pass
+  except Exception as e:
+    print("Exception: {}".format(e))
+    pass
