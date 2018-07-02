@@ -9,6 +9,33 @@ class Roles:
 
     def __init__(self, bot):
         self.bot = bot
+        self.top_roles = dict()
+
+    @asyncio.coroutine
+    def on_ready(self):
+        for server in self.bot.servers:
+            self.update_top_role(server)
+
+    @asyncio.coroutine
+    def on_server_role_create(self, role):
+        self.update_top_role(role.server)
+
+    @asyncio.coroutine
+    def on_server_role_delete(self, role):
+        self.update_top_role(role.server)
+
+    @asyncio.coroutine
+    def on_server_role_update(self, role_before, role_after):
+        self.update_top_role(role_after.server)
+
+    @asyncio.coroutine
+    def on_member_update(self, member_before, member_after):
+        if(member_after.id == self.bot.user.id):
+            self.update_top_role(member_after.server)
+
+    def update_top_role(self, server):
+        """Updates the bot's top role for a server"""
+        self.top_roles[server.id] = server.me.top_role
 
     def role_inflator(self, server, roles_string):
         """Takes a list of roles as a string and returns a list of Role objects"""
@@ -22,6 +49,28 @@ class Roles:
                 if(role.casefold() == server_role.name.casefold()):
                     results.append(server_role)
         return results
+
+    @commands.command(pass_context=True,description='List roles')
+    @asyncio.coroutine
+    def roles(self, ctx):
+        user = ctx.message.author
+        server = ctx.message.server
+        channel = ctx.message.channel
+        try:
+            if server is None or user is None:
+                return
+            yield from self.bot.send_typing(channel)
+            roles_list = []
+            for role in server.roles:
+                if role.is_everyone:
+                    continue
+                if(role <= self.top_roles[server.id]):
+                    roles_list.append(role)
+            if len(roles_list):
+                yield from self.bot.say('```{}```'.format('\n'.join([role.name for role in roles_list])))
+        except Exception as e:
+            yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
+            pass
 
     @commands.command(pass_context=True,description='Add yourself to a role')
     @asyncio.coroutine
