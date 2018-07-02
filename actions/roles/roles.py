@@ -16,9 +16,9 @@ class Roles:
         results = []
         roles = map(str.strip, roles_string.split(','))
         for role in roles:
-            if role.is_everyone:
-                continue
             for server_role in server_roles:
+                if server_role.is_everyone:
+                    continue
                 if(role.casefold() == server_role.name.casefold()):
                     results.append(server_role)
         return results
