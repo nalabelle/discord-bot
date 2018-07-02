@@ -18,9 +18,7 @@ class Roles:
         for role in roles:
             if role.is_everyone:
                 continue
-            print("{}".format(role))
             for server_role in server_roles:
-                print("{}".format(server_role.name))
                 if(role.casefold() == server_role.name.casefold()):
                     results.append(server_role)
         return results
@@ -45,7 +43,6 @@ class Roles:
             yield from self.bot.say('I\'m not allowed to add that role!')
             pass
         except Exception as e:
-            traceback.print_exc()
             yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
             pass
 
@@ -69,7 +66,6 @@ class Roles:
             yield from self.bot.say('I\'m not allowed to remove that role!')
             pass
         except Exception as e:
-            traceback.print_exc()
             yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
             pass
 
