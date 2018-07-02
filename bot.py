@@ -7,6 +7,7 @@ from discord.ext import commands
 from actions.weather.weather import Weather
 from actions.giphy.giphy import Giphy
 from actions.status.status import Status
+from actions.roles.roles import Roles
 
 try:
   token = os.environ['DISCORD_TOKEN']
@@ -20,6 +21,7 @@ client = commands.Bot(command_prefix=commands.when_mentioned_or('!'), descriptio
 client.add_cog(Weather(client))
 client.add_cog(Giphy(client))
 client.add_cog(Status(client))
+client.add_cog(Roles(client))
 
 @client.event
 @asyncio.coroutine
