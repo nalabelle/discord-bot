@@ -50,9 +50,14 @@ class Roles:
                     results.append(server_role)
         return results
 
-    @commands.command(pass_context=True,description='List roles')
+    @commands.group(name="role",invoke_without_command=False)
     @asyncio.coroutine
-    def roles(self, ctx):
+    def role(self):
+        """Manages assignable roles"""
+    
+    @role.command(pass_context=True,description='List roles')
+    @asyncio.coroutine
+    def list(self, ctx):
         user = ctx.message.author
         server = ctx.message.server
         channel = ctx.message.channel
@@ -72,9 +77,9 @@ class Roles:
             yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
             pass
 
-    @commands.command(pass_context=True,description='Add yourself to a role')
+    @role.command(pass_context=True,description='Add yourself to a role')
     @asyncio.coroutine
-    def addme(self, ctx, *, roles : str):
+    def add(self, ctx, *, roles : str):
         user = ctx.message.author
         server = ctx.message.server
         channel = ctx.message.channel
@@ -95,9 +100,9 @@ class Roles:
             yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
             pass
 
-    @commands.command(pass_context=True,description='Remove yourself from a role')
+    @role.command(pass_context=True,description='Remove yourself from a role')
     @asyncio.coroutine
-    def removeme(self, ctx, *, roles : str):
+    def remove(self, ctx, *, roles : str):
         user = ctx.message.author
         server = ctx.message.server
         channel = ctx.message.channel
