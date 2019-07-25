@@ -26,33 +26,38 @@ class Weather:
     channel = ctx.message.channel
     try:
       yield from self.bot.send_typing(channel)
-      loc = geocoder.google(location)
-      forecast = forecastio.load_forecast(FORECAST_API_KEY, loc.lat, loc.lng, units='si')
-      messages = []
-      cur = forecast.currently()
-      utc_time = cur.time.replace(tzinfo=tz.gettz('UTC'))
-      local_time = utc.astimezone(tz.gettz(forecast.timezone))
-      utc_dt = utc_time.strftime('%Y-%m-%d %H:%M UTC')
-      local_dt = local_time.strftime('%Y-%m-%d %H:%M local')
-      messages.append('__{}__ `@{}` (`@{}`)'.format(loc.address, local_dt, utc_dt))
-      messages.append('**Currently**: {} {}. {} {}'.format(
-        self.icon_image(cur.icon), cur.summary,
-        forecast.minutely().summary, forecast.hourly().summary))
-      messages.append('**Temp**: {:,g}°C ({:,g}°F) **Feels Like**: {:,g}°C ({:,g}°F)'.format(
-        round(cur.temperature,1), self.freedom_temp(cur.temperature),
-        round(cur.apparentTemperature,1), self.freedom_temp(cur.apparentTemperature)))
-      messages.append('**Humidity**: {:,g}%'.format(round(cur.humidity * 100, 0)))
-      messages.append('**Chance of Rain**: {:,g}%'.format(round(cur.precipProbability * 100, 0)))
-      messages.append('**Wind**: {} {:,g} kph ({:,g} freedom units)'.format(
-        self.bearing(cur.windBearing), self.sensible_speed(cur.windSpeed),
-        self.freedom_speed(cur.windSpeed)))
-      if len(forecast.alerts()) > 0:
-        for alert in forecast.alerts():
-          messages.append('__**{}**__: {}: {}'.format(alert.severity.title(), alert.title, alert.uri))
-      yield from self.bot.say('{}'.format("\n".join(messages)))
+      weather_lines = self.get_weather(location)
+      yield from self.bot.say('{}'.format("\n".join(weather_lines)))
     except Exception as e:
       yield from self.bot.say('I broke! 😭 {}'.format(str(e)))
       pass
+
+  def get_weather(self, location_text):
+    loc = geocoder.google(location_text)
+    forecast = forecastio.load_forecast(FORECAST_API_KEY, loc.lat, loc.lng, units='si')
+    messages = []
+    cur = forecast.currently()
+    utc_time = cur.time.replace(tzinfo=tz.gettz('UTC'))
+    local_timezone = forecast.json['timezone']
+    local_time = utc_time.astimezone(tz.gettz(local_timezone))
+    utc_dt = utc_time.strftime('%Y-%m-%d %H:%M UTC')
+    local_dt = local_time.strftime('%Y-%m-%d %H:%M {}'.format(local_timezone))
+    messages.append('__{}__ `@{} ({}`)'.format(loc.address, local_dt, utc_dt))
+    messages.append('**Currently**: {} {}. {} {}'.format(
+      self.icon_image(cur.icon), cur.summary,
+      forecast.minutely().summary, forecast.hourly().summary))
+    messages.append('**Temp**: {:,g}°C ({:,g}°F) **Feels Like**: {:,g}°C ({:,g}°F)'.format(
+      round(cur.temperature,1), self.freedom_temp(cur.temperature),
+      round(cur.apparentTemperature,1), self.freedom_temp(cur.apparentTemperature)))
+    messages.append('**Humidity**: {:,g}%'.format(round(cur.humidity * 100, 0)))
+    messages.append('**Chance of Rain**: {:,g}%'.format(round(cur.precipProbability * 100, 0)))
+    messages.append('**Wind**: {} {:,g} kph ({:,g} freedom units)'.format(
+      self.bearing(cur.windBearing), self.sensible_speed(cur.windSpeed),
+      self.freedom_speed(cur.windSpeed)))
+    if len(forecast.alerts()) > 0:
+      for alert in forecast.alerts():
+        messages.append('__**{}**__: {}: {}'.format(alert.severity.title(), alert.title, alert.uri))
+    return messages
 
   def sensible_speed(self, speed_ms):
     """Given speed in meters/second returns kilometers/hour"""
