@@ -31,7 +31,7 @@ class Weather:
       messages = []
       cur = forecast.currently()
       utc_time = cur.time.replace(tzinfo=tz.gettz('UTC'))
-      local_time = utc.astimezone(tz.gettz(cur.timezone))
+      local_time = utc.astimezone(tz.gettz(forecast.timezone))
       utc_dt = utc_time.strftime('%Y-%m-%d %H:%M UTC')
       local_dt = local_time.strftime('%Y-%m-%d %H:%M local')
       messages.append('__{}__ `@{}` (`@{}`)'.format(loc.address, local_dt, utc_dt))
