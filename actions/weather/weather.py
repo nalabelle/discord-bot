@@ -5,6 +5,7 @@ from discord.ext import commands
 import geocoder
 import forecastio
 import datetime
+from dateutil import tz
 
 try:
   FORECAST_API_KEY = os.environ['FORECAST_API_KEY']
@@ -29,8 +30,11 @@ class Weather:
       forecast = forecastio.load_forecast(FORECAST_API_KEY, loc.lat, loc.lng, units='si')
       messages = []
       cur = forecast.currently()
-      utc_dt = cur.time.strftime('%Y-%m-%d %H:%M UTC')
-      messages.append('__{}__ `@{}`'.format(loc.address, utc_dt))
+      utc_time = cur.time.replace(tzinfo=tz.gettz('UTC'))
+      local_time = utc.astimezone(tz.gettz(forecast.timezone))
+      utc_dt = utc_time.strftime('%Y-%m-%d %H:%M UTC')
+      local_dt = local_time.strftime('%Y-%m-%d %H:%M local')
+      messages.append('__{}__ `@{}` (`@{}`)'.format(loc.address, local_dt, utc_dt))
       messages.append('**Currently**: {} {}. {} {}'.format(
         self.icon_image(cur.icon), cur.summary,
         forecast.minutely().summary, forecast.hourly().summary))
