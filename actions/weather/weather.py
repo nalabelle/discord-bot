@@ -56,7 +56,10 @@ class Weather:
       self.freedom_speed(cur.windSpeed)))
     if len(forecast.alerts()) > 0:
       for alert in forecast.alerts():
-        messages.append('__**{}**__: {}: {}'.format(alert.severity.title(), alert.title, alert.uri))
+        alert_text = '__**{}**__: {}: {}'.format(alert.severity.title(), alert.title, alert.uri)
+        # forecast tends to give a bunch of completely duplicate warnings
+        if alert_text not in messages:
+          messages.append(alert_text)
     return messages
 
   def sensible_speed(self, speed_ms):
