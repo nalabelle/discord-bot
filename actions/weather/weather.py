@@ -42,7 +42,7 @@ class Weather:
     local_time = utc_time.astimezone(tz.gettz(local_timezone))
     utc_dt = utc_time.strftime('%Y-%m-%d %H:%M UTC')
     local_dt = local_time.strftime('%Y-%m-%d %H:%M {}'.format(local_timezone))
-    messages.append('__{}__ `@{} ({}`)'.format(loc.address, local_dt, utc_dt))
+    messages.append('__{}__ `@{} ({})`'.format(loc.address, local_dt, utc_dt))
     messages.append('**Currently**: {} {}. {} {}'.format(
       self.icon_image(cur.icon), cur.summary,
       forecast.minutely().summary, forecast.hourly().summary))
