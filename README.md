@@ -20,6 +20,8 @@ $ GOOGLE_API_KEY="KEY1" FORECAST_API_KEY="KEY2" DISCORD_TOKEN="KEY3" python3 ~/d
 
 ### Docker
 
+[Docker Hub](https://hub.docker.com/r/nalabelle/discord-bot/)
+
 ~~~
 docker create --name=discord-bot \
 -e DISCORD_TOKEN=<discord_api_token>
