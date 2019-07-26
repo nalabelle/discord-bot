@@ -4,8 +4,9 @@ Python Discord Bot
 ![Image of Puppet](https://github.com/nalabelle/discord-bot/raw/master/puppet.jpg)
 
 ## Usage
-  - Docker: https://github.com/nalabelle/docker-discord-bot
-  - Git:
+
+### From source:
+
 ~~~
 # Something like this
 $ pip install \
@@ -15,6 +16,18 @@ $ pip install \
      python-forecastio
 $ git clone https://github.com/nalabelle/discord-bot.git ~/discord-bot
 $ GOOGLE_API_KEY="KEY1" FORECAST_API_KEY="KEY2" DISCORD_TOKEN="KEY3" python3 ~/discord-bot/bot.py
+~~~
+
+### Docker
+
+~~~
+docker create --name=discord-bot \
+-e DISCORD_TOKEN=<discord_api_token>
+-e GOOGLE_API_KEY=<google_api_key> \
+-e FORECAST_API_KEY=<forecast_api_key> \
+-e PGID=<gid> -e PUID=<uid> \
+-e TZ=<timezone> \
+nalabelle/discord-bot
 ~~~
 
 ## Functions
