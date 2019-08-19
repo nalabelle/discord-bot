@@ -33,10 +33,11 @@ class Weather:
       pass
 
   def get_weather(self, location_text):
-    loc = geocoder.google(location_text)
-    forecast = forecastio.load_forecast(FORECAST_API_KEY, loc.lat, loc.lng, units='si')
+    loc = self.geocode_location(location_text)
+    forecast = self.get_forecast(loc.lat, loc.lng)
     messages = []
     cur = forecast.currently()
+    day = forecast.daily().data[0]
     utc_time = cur.time.replace(tzinfo=tz.gettz('UTC'))
     local_timezone = forecast.json['timezone']
     local_time = utc_time.astimezone(tz.gettz(local_timezone))
@@ -46,9 +47,12 @@ class Weather:
     messages.append('**Currently**: {} {}. {} {}'.format(
       self.icon_image(cur.icon), cur.summary,
       forecast.minutely().summary, forecast.hourly().summary))
-    messages.append('**Temp**: {:,g}°C ({:,g}°F) **Feels Like**: {:,g}°C ({:,g}°F)'.format(
+    messages.append('**Temp**: {:,g}°C ({:,g}°F) **Feels Like**: {:,g}°C ({:,g}°F) **High/Low**: {:,g}°C ({:,g}°F)/{:,g}°C ({:,g}°F)'.format(
       round(cur.temperature,1), self.freedom_temp(cur.temperature),
-      round(cur.apparentTemperature,1), self.freedom_temp(cur.apparentTemperature)))
+      round(cur.apparentTemperature,1), self.freedom_temp(cur.apparentTemperature),
+      round(day.temperatureHigh,1), self.freedom_temp(day.temperatureHigh),
+      round(day.temperatureLow,1), self.freedom_temp(day.temperatureLow)
+      ))
     messages.append('**Humidity**: {:,g}%'.format(round(cur.humidity * 100, 0)))
     messages.append('**Chance of Rain**: {:,g}%'.format(round(cur.precipProbability * 100, 0)))
     messages.append('**Wind**: {} {:,g} kph ({:,g} freedom units)'.format(
@@ -61,6 +65,12 @@ class Weather:
         if alert_text not in messages:
           messages.append(alert_text)
     return messages
+
+  def geocode_location(self, location_text):
+    return geocoder.google(location_text)
+
+  def get_forecast(self, lat, lng):
+    return forecastio.load_forecast(FORECAST_API_KEY, lat, lng, units='si')
 
   def sensible_speed(self, speed_ms):
     """Given speed in meters/second returns kilometers/hour"""
