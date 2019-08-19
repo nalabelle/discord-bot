@@ -15,9 +15,11 @@ except KeyError:
   print("Please set the DISCORD_TOKEN env variable before running")
   sys.exit(1)
 
+bot_prefix = os.getenv('BOT_PREFIX', '!')
+
 logging.basicConfig(level=logging.DEBUG)
 
-client = commands.Bot(command_prefix=commands.when_mentioned_or('!'), description="Testing")
+client = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix), description="Testing")
 client.add_cog(Weather(client))
 client.add_cog(Giphy(client))
 client.add_cog(Status(client))
