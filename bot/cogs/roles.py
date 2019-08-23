@@ -60,7 +60,7 @@ class Roles(commands.Cog):
             async with channel.typing():
                 role_list = self.role_inflator(guild, roles)
                 if len(role_list):
-                    await user.add_roles(user, *role_list)
+                    await user.add_roles(*role_list)
                     changed = True
             if changed:
                 await channel.send('I added {} to {}!'.format(
@@ -72,6 +72,7 @@ class Roles(commands.Cog):
             await channel.send('I\'m not allowed to add that role!')
 
     @role.command(description='Remove yourself from a role')
+    @commands.guild_only()
     async def remove(self, ctx, *, roles : str):
         guild = ctx.guild
         channel = ctx.channel
@@ -82,7 +83,7 @@ class Roles(commands.Cog):
             async with channel.typing():
                 role_list = self.role_inflator(guild, roles)
                 if len(role_list):
-                    await user.remove_roles(user, *role_list)
+                    await user.remove_roles(*role_list)
                     changed = True
             if changed:
                 await channel.send('I removed {} from {}!'.format(
