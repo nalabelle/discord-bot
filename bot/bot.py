@@ -9,6 +9,7 @@ from cogs.giphy import Giphy
 from cogs.status import Status
 from cogs.roles import Roles
 from cogs.errors import Errors
+from cogs.drawing_contest import DrawingContest
 
 try:
   token = os.environ['DISCORD_TOKEN']
@@ -18,7 +19,7 @@ except KeyError:
 
 bot_prefix = os.getenv('BOT_PREFIX', '!')
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 
 client = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix), description="Testing")
 client.add_cog(Errors(client))
@@ -26,5 +27,6 @@ client.add_cog(Weather(client))
 client.add_cog(Giphy(client))
 client.add_cog(Status(client))
 client.add_cog(Roles(client))
+client.add_cog(DrawingContest(client))
 
 client.run(token)
