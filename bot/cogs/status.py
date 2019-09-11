@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from lib import custom_permissions
+from ext import custom_permissions
 
 class Status(commands.Cog):
     """ Now Playing """
