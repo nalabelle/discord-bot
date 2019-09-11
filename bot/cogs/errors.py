@@ -8,6 +8,7 @@ class Errors(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logging.getLogger('ErrorsCog')
+        self.logger.setLevel('DEBUG')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -18,5 +19,5 @@ class Errors(commands.Cog):
         else:
             await ctx.channel.send('I broke! 😭 {}'.format(str(error)))
             # log these so we can catch them
-            self.logger.exception(error)
+            raise error
 
