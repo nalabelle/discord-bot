@@ -104,8 +104,9 @@ class Roles(commands.Cog):
         for role in guild.roles:
             if role.id == guild.default_role.id:
                 continue
-            if(role <= top_role):
+            if(role < top_role):
                 roles_list.append(role)
+        roles_list.sort()
         return roles_list
 
     def update_top_role_from_guild(self, guild):
