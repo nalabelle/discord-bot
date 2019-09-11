@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 from services.contest import Contest
-from lib import custom_permissions
+from ext import custom_permissions
 
 class DrawingContest(commands.Cog):
     """Drawing Contest Commands"""
