@@ -19,7 +19,7 @@ except KeyError:
 
 bot_prefix = os.getenv('BOT_PREFIX', '!')
 
-logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.DEBUG)
 
 client = commands.Bot(command_prefix=commands.when_mentioned_or(bot_prefix), description="Testing")
 client.add_cog(Errors(client))
