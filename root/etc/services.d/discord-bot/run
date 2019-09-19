@@ -3,4 +3,4 @@
 umask 022
 
 exec \
-	s6-setuidgid abc python3 /app/bot.py
+	s6-setuidgid abc python3 /app/bot.py -d /config
