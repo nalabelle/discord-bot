@@ -16,7 +16,9 @@ class Contest:
         if not os.path.exists('config'):
             os.mkdir('config')
 
-    def set_next_execution(self, next_execution, channel):
+    def set_next_execution(self, next_execution=None, channel=None):
+        if channel is None or next_execution is None:
+            self.next_execution = None
         self.next_execution = {
                 "time": next_execution,
                 "channel": channel
