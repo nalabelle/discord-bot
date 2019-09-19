@@ -8,8 +8,7 @@ class Contest:
 
     def __init__(self):
         self.prompts = set()
-        self.create_save_folder()
-        self.filename = 'config/drawing_prompts.txt'
+        self.filename = 'drawing_prompts.txt'
         self.shuffled_prompts = []
         self.next_execution = None
 
