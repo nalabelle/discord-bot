@@ -12,6 +12,7 @@ class DrawingContest(commands.Cog):
         self.contest = Contest()
         self.contest.load_prompts()
         self._next_prompt = None
+        self.prompt_timer.start()
 
     def cog_unload(self):
         self.prompt_timer.cancel()
@@ -45,7 +46,6 @@ class DrawingContest(commands.Cog):
             if channel is not None and dt is not None:
                 print("setting timer")
                 self.set_timer(channel, dt)
-                self.prompt_timer.start()
             else:
                 print("wtf {}".format(next_execution['channel']))
 
@@ -69,7 +69,6 @@ class DrawingContest(commands.Cog):
     async def set(self, ctx):
         channel = ctx.message.channel
         next_execution = self.set_timer(channel)
-        self.prompt_timer.start()
         await channel.send('Draw timer started, will prompt at {}'.format(next_execution))
 
     @timer.command(description="Unset the timer")
@@ -77,7 +76,7 @@ class DrawingContest(commands.Cog):
     async def unset(self, ctx):
         channel = ctx.message.channel
         self.contest.set_next_execution(None)
-        self.prompt_timer.cancel()
+        self._next_prompt = None
         await channel.send('Draw timer stopped')
 
     @draw.group(name="prompt",invoke_without_command=True)
