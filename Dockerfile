@@ -23,4 +23,5 @@ RUN \
 # add local files
 COPY root/ /
 COPY bot/ /app/
+VOLUME ["/app/config"]
 
