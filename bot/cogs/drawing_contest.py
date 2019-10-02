@@ -10,13 +10,11 @@ class DrawingContest(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.contest = Contest()
-        self.contest.load_prompts()
         self._next_prompt = None
         self.prompt_timer.start()
 
     def cog_unload(self):
         self.prompt_timer.cancel()
-        self.contest.save_all_prompts()
 
     def set_timer(self, channel, next_execution=None):
         now = datetime.now()

@@ -1,52 +1,44 @@
 import random
 import os
-import json
 from random import randrange
+import services.config
 
 class Contest:
     """ Contest library """
 
     def __init__(self):
         self.prompts = set()
-        self.filename = 'drawing_prompts.txt'
         self.shuffled_prompts = []
         self.next_execution = None
+        self.load_from_config()
 
-    def create_save_folder(self):
-        if not os.path.exists('config'):
-            os.mkdir('config')
+    def load_from_config(self):
+        self.next_execution = services.config.get('contest.next_execution')
+        if self.next_execution is not None:
+            self.set_next_execution(self.next_execution['time'], \
+                    self.next_execution['channel'])
+        prompts = services.config.get('contest.prompts')
+        if prompts is not None:
+            self.prompts = set(prompts)
+        shuffled = services.config.get('contest.shuffled')
+        if shuffled is not None:
+            self.shuffled_prompts = shuffled
+
+    def save_to_config(self):
+        services.config.set('contest.next_execution', self.next_execution)
+        services.config.set('contest.prompts', list(self.prompts))
+        services.config.set('contest.shuffled', self.shuffled_prompts)
+        services.config.save()
 
     def set_next_execution(self, next_execution=None, channel=None):
         if channel is None or next_execution is None:
             self.next_execution = None
+            return
         self.next_execution = {
                 "time": next_execution,
                 "channel": channel
                 }
-
-    def save_all_prompts(self):
-        state = {
-                    "prompts": list(self.prompts),
-                    "shuffled": self.shuffled_prompts,
-                    "next_execution": self.next_execution
-                }
-        with open(self.filename, "w") as f:
-            json.dump(state, f, indent=2, sort_keys=True)
-
-    def load_prompts(self):
-        if not os.path.isfile(self.filename):
-            return
-        state = None
-        with open(self.filename, "r") as f:
-            state = json.load(f)
-        if state is not None:
-            if state.get('next_execution') is not None:
-                ne = state['next_execution']
-                self.set_next_execution(ne['time'], ne['channel'])
-            if len(state['prompts']) > 0:
-                self.prompts = set(state['prompts'])
-            if len(state['shuffled']) > 0:
-                self.shuffled_prompts = state['shuffled']
+        self.save_to_config()
 
     def add_prompt(self, prompt):
         prompt = prompt.strip()
@@ -56,6 +48,7 @@ class Contest:
         if after_length > before_length:
             index = randrange(len(self.shuffled_prompts)+1)
             self.shuffled_prompts.insert(index, prompt)
+            self.save_to_config()
             return True
         return False
 
@@ -73,4 +66,5 @@ class Contest:
         prompt_list = list(self.prompts)
         random.shuffle(prompt_list)
         self.shuffled_prompts = prompt_list
+        self.save_to_config()
 
