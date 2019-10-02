@@ -16,12 +16,15 @@ class DrawingContest(commands.Cog):
     def cog_unload(self):
         self.prompt_timer.cancel()
 
-    def set_timer(self, channel, next_execution=None):
+    def set_timer(self, channel, days_to_wait=1, next_execution=None):
         now = datetime.now()
         if next_execution is None or next_execution < now:
-            next_execution = now + timedelta(days=1)
-        self.contest.set_next_execution(next_execution.isoformat(' '), channel.id)
-        self._next_prompt = {'channel': channel, 'time': next_execution}
+            next_execution = now + timedelta(days=days_to_wait)
+        self.contest.set_next_execution(\
+                next_execution=next_execution.isoformat(' '),
+                channel=channel.id,
+                days=days_to_wait)
+        self._next_prompt = {'channel': channel, 'time': next_execution, 'days': days_to_wait}
         return next_execution
 
     @tasks.loop(seconds=60)
@@ -30,8 +33,9 @@ class DrawingContest(commands.Cog):
             return
         time = self._next_prompt['time']
         channel = self._next_prompt['channel']
+        days = self._next_prompt['days']
         if datetime.now() > time:
-            self.set_timer(channel)
+            self.set_timer(channel, days_to_wait=days)
             await self.say_prompt(channel)
 
     @commands.Cog.listener()
@@ -41,9 +45,10 @@ class DrawingContest(commands.Cog):
         if next_execution is not None:
             channel = self.bot.get_channel(next_execution['channel'])
             dt = datetime.strptime(next_execution['time'], "%Y-%m-%d %H:%M:%S.%f")
+            days = next_execution['days']
             if channel is not None and dt is not None:
                 print("setting timer")
-                self.set_timer(channel, dt)
+                self.set_timer(channel, next_execution=dt, days_to_wait=days)
             else:
                 print("wtf {}".format(next_execution['channel']))
 
@@ -64,9 +69,11 @@ class DrawingContest(commands.Cog):
 
     @timer.command(description="Set the timer")
     @custom_permissions.is_owner_or_admin()
-    async def set(self, ctx):
+    async def set(self, ctx, *, phrase : str):
         channel = ctx.message.channel
-        next_execution = self.set_timer(channel)
+        if phrase and not phrase.isdigit():
+            phrase = None
+        next_execution = self.set_timer(channel, days_to_wait=phrase)
         await channel.send('Draw timer started, will prompt at {}'.format(next_execution))
 
     @timer.command(description="Unset the timer")

@@ -15,8 +15,10 @@ class Contest:
     def load_from_config(self):
         self.next_execution = services.config.get('contest.next_execution')
         if self.next_execution is not None:
-            self.set_next_execution(self.next_execution['time'], \
-                    self.next_execution['channel'])
+            self.set_next_execution(
+                    self.next_execution['time'], \
+                    self.next_execution['channel'],\
+                    self.next_execution['days'])
         prompts = services.config.get('contest.prompts')
         if prompts is not None:
             self.prompts = set(prompts)
@@ -30,13 +32,14 @@ class Contest:
         services.config.set('contest.shuffled', self.shuffled_prompts)
         services.config.save()
 
-    def set_next_execution(self, next_execution=None, channel=None):
+    def set_next_execution(self, next_execution=None, channel=None, days=1):
         if channel is None or next_execution is None:
             self.next_execution = None
             return
         self.next_execution = {
                 "time": next_execution,
-                "channel": channel
+                "channel": channel,
+                "days": days
                 }
         self.save_to_config()
 
