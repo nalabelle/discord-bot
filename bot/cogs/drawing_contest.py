@@ -48,7 +48,7 @@ class DrawingContest(commands.Cog):
             days = next_execution['days']
             if channel is not None and dt is not None:
                 print("setting timer")
-                self.set_timer(channel, next_execution=dt, days_to_wait=days)
+                self.set_timer(channel, next_execution=dt, days_to_wait=int(days))
             else:
                 print("wtf {}".format(next_execution['channel']))
 
@@ -73,7 +73,7 @@ class DrawingContest(commands.Cog):
         channel = ctx.message.channel
         if phrase and not phrase.isdigit():
             phrase = None
-        next_execution = self.set_timer(channel, days_to_wait=phrase)
+        next_execution = self.set_timer(channel, days_to_wait=int(phrase))
         await channel.send('Draw timer started, will prompt at {}'.format(next_execution))
 
     @timer.command(description="Unset the timer")
