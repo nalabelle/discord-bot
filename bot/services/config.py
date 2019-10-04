@@ -29,7 +29,8 @@ class Config(object):
 
     def save_config(self):
         with open(self.config_file, "w") as f:
-            json.dump(self.conf, f, indent=2, sort_keys=True)
+            print(self.conf)
+            json.dump(self.conf, f, default=lambda o: o.serialize(), indent=2, sort_keys=True)
 
     def set(self, prop, value):
         keys = prop.split('.')

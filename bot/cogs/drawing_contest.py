@@ -1,61 +1,133 @@
 from datetime import datetime, timedelta
+import queue
 import discord
 from discord.ext import tasks,commands
-from services.contest import Contest
+from services.contest import ContestTracking
+import services.config
 from ext import custom_permissions
 
 class DrawingContest(commands.Cog):
-    """Drawing Contest Commands"""
+    """
+    Drawing Contest Commands
+
+    - Runs a drawing contest and collects entries
+    - Uses a per-guild prompt list
+    - Allows one contest series per guild (expects to monitor one channel)
+    """
 
     def __init__(self, bot):
         self.bot = bot
-        self.contest = Contest()
-        self._next_prompt = None
+        self.execution_queue = []
+        self.draw_guilds = dict()
+        config = services.config.get('drawing_contest')
+        if config:
+            for guild_id, entry in config.items():
+                ct = ContestTracking.deserialize(entry["tracking"])
+                self.draw_guilds[guild_id]["channel_id"] = entry["channel_id"]
+                self.draw_guilds[guild_id]["tracking"] = ct
+                current_contest = ct.current_contest
+                if current_contest is not None:
+                    contest_end = ct.get_contest_end()
+                    self.execution_queue.append((contest_end, guild_id))
+            self.execution_queue.sort(key=lambda tup: tup[0])
+
+    def save_draw_guilds(self):
+        services.config.set('drawing_contest', self.draw_guilds)
+        services.config.save()
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Load the timers for each contest series"""
         self.prompt_timer.start()
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if self.message_is_drawing_maybe(message):
+            draw_guild = self.get_draw_guild(message.guild)
+            draw_guild.add_entry(message.id)
+            await message.add_reaction('👍')
+            self.save_draw_guilds()
+
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, user):
+        message = reaction.message
+        if self.message_is_drawing_maybe(message):
+            draw_guild = self.get_draw_guild(message.guild)
+            entry = draw_guild.get_entry(message.id)
+            if entry is None:
+                return
+            emoji = reaction.emoji
+            if emoji is None:
+                return
+            if hasattr(emoji, 'name'):
+                name = emoji.name
+                if name == 'thumbsdown':
+                    entry.removed = True
+                    self.save_draw_guilds()
+
+    def message_is_drawing_maybe(self, message):
+        # we're looking for user messages with attachments in our guild
+        # drawing channel...
+        if message.type != discord.MessageType.default:
+            return False
+        if len(message.attachments) < 1:
+            return False
+        if message.guild is None:
+            return False
+        if str(message.guild.id) in self.draw_guilds:
+            channel_id = self.draw_guilds[str(message.guild.id)]["channel_id"]
+            if str(message.channel.id) == channel_id:
+                return True
 
     def cog_unload(self):
         self.prompt_timer.cancel()
 
-    def set_timer(self, channel, days_to_wait=1, next_execution=None):
-        now = datetime.now()
-        if next_execution is None or next_execution < now:
-            next_execution = now + timedelta(days=days_to_wait)
-        self.contest.set_next_execution(\
-                next_execution=next_execution.isoformat(' '),
-                channel=channel.id,
-                days=days_to_wait)
-        self._next_prompt = {'channel': channel, 'time': next_execution, 'days': days_to_wait}
-        return next_execution
-
     @tasks.loop(seconds=60)
     async def prompt_timer(self):
-        if self._next_prompt is None:
-            return
-        time = self._next_prompt['time']
-        channel = self._next_prompt['channel']
-        days = self._next_prompt['days']
-        if datetime.now() > time:
-            self.set_timer(channel, days_to_wait=days)
-            await self.say_prompt(channel)
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        await self.bot.wait_until_ready()
-        next_execution = self.contest.next_execution
-        if next_execution is not None:
-            channel = self.bot.get_channel(next_execution['channel'])
-            dt = datetime.strptime(next_execution['time'], "%Y-%m-%d %H:%M:%S.%f")
-            days = next_execution['days']
-            if channel is not None and dt is not None:
-                print("setting timer")
-                self.set_timer(channel, next_execution=dt, days_to_wait=int(days))
+        now = datetime.now()
+        for contest_end, guild_id in self.execution_queue:
+            if now > contest_end:
+                await self.end_contest(guild_id)
+                await self.start_contest(guild_id)
             else:
-                print("wtf {}".format(next_execution['channel']))
+                break
 
-    async def say_prompt(self, channel):
-        prompt = self.contest.get_prompt()
+    def get_draw_guild(self, guild: discord.Guild):
+        if str(guild.id) in self.draw_guilds:
+            draw_guild = self.draw_guilds[str(guild.id)]
+        else:
+            draw_guild = ContestTracking()
+            self.draw_guilds[str(guild.id)] = draw_guild
+        return draw_guild
+
+    async def end_contest(self, guild: discord.Guild):
+        draw_guild = self.get_draw_guild(guild)
+        channel_id = self.draw_guilds[str(guild.id)]["channel_id"]
+        channel = self.bot.get_channel(channel_id)
+        async with channel.typing():
+            if draw_guild.stop_contest():
+                self.save_draw_guilds()
+                await channel.send('Drawing Contest has ended :(')
+            else:
+                await channel.send('I couldn\'t find a contest to end')
+
+    async def start_contest(self, guild: discord.Guild, interval_days: int=None):
+        draw_guild = self.get_draw_guild(guild)
+        channel_id = self.draw_guilds[str(guild.id)]["channel_id"]
+        channel = self.bot.get_channel(channel_id)
+        draw_guild.start_contest(interval_days)
+        async with channel.typing():
+            prompt = draw_guild.get_current_prompt()
+            await self.say_prompt(channel, prompt)
+            contest_end = draw_guild.get_contest_end()
+            if contest_end is not None:
+                self.save_draw_guilds()
+                self.execution_queue.append((contest_end, guild.id))
+                await channel.send('Contest ends at {}'.format(contest_end))
+
+    async def say_prompt(self, channel: discord.abc.Messageable, prompt: str=None):
         if prompt is None:
-            await channel.send('Add some! I\'m all out!')
+            await channel.send('I\'m all out of drawing prompts!')
         else:
             await channel.send('Draw: **{}**!'.format(prompt))
 
@@ -63,61 +135,73 @@ class DrawingContest(commands.Cog):
     async def draw(self, ctx):
         """Drawing Contest Commands"""
 
-    @draw.group(name="timer")
-    async def timer(self, ctx):
-        """Drawing Contest Timers"""
+    @draw.group(name="contest", description="Drawing Contest functions")
+    async def contest(self, ctx):
+        """Drawing Contest Functions"""
 
-    @timer.command(description="Set the timer")
-    @custom_permissions.is_owner_or_admin()
-    async def set(self, ctx, *, phrase : str):
-        channel = ctx.message.channel
-        if phrase and not phrase.isdigit():
-            phrase = None
-        next_execution = self.set_timer(channel, days_to_wait=int(phrase))
-        await channel.send('Draw timer started, will prompt at {}'.format(next_execution))
+    @contest.command(description="Start the contest!")
+    @commands.guild_only()
+    @commands.has_permissions(manage_webhooks=True)
+    async def start(self, ctx, interval_days: int):
+        """Sets the drawing contest timer for the specified amount of days"""
+        draw_guild = self.get_draw_guild(ctx.guild)
+        self.draw_guilds[str(ctx.guild.id)]["channel_id"] = ctx.channel.id
+        await self.start_contest(ctx.guild, interval_days)
 
-    @timer.command(description="Unset the timer")
-    @custom_permissions.is_owner_or_admin()
-    async def unset(self, ctx):
-        channel = ctx.message.channel
-        self.contest.set_next_execution(None)
-        self._next_prompt = None
-        await channel.send('Draw timer stopped')
+    @contest.command(description="Stop the contest :(")
+    @commands.guild_only()
+    @commands.has_permissions(manage_webhooks=True)
+    async def stop(self, ctx):
+        """Ends the current drawing contest and unsets the next execution"""
+        await self.end_contest(ctx.guild)
 
-    @draw.group(name="prompt",invoke_without_command=True)
+    @draw.group(
+            name="prompt",
+            invoke_without_command=True,
+            description="Get a drawing prompt"
+            )
+    @commands.guild_only()
     async def prompt(self, ctx):
         """Get a drawing prompt"""
-        channel = ctx.message.channel
-        await self.say_prompt(channel)
+        async with ctx.typing():
+            draw_guild = self.get_draw_guild(ctx.guild)
+            prompt = draw_guild.get_current_prompt()
+            self.save_draw_guilds()
+            await self.say_prompt(ctx, prompt)
 
     @prompt.command(description='Add a drawing subject')
+    @commands.guild_only()
     async def add(self, ctx, *, phrase : str):
-        channel = ctx.message.channel
-        async with channel.typing():
-            added = self.contest.add_prompt(phrase)
-        if added:
-            await channel.send('added "{}" to drawing prompts!'.format(phrase))
-        else:
-            await channel.send('sorry, I didn\'t understand that one.')
+        """Adds a drawing subject to guild prompts"""
+        async with ctx.typing():
+            draw_guild = self.get_draw_guild(ctx.guild)
+            if draw_guild.add_prompt(phrase):
+                self.save_draw_guilds()
+                await ctx.send('added "{}" to drawing prompts!'.format(phrase))
+            else:
+                await ctx.send('sorry, I didn\'t understand that one.')
 
-    @prompt.command(description='Dump drawing subjects',hidden=True)
-    @custom_permissions.is_owner_or_admin()
-    async def dump(self, ctx):
-        channel = ctx.message.channel
-        prompts = self.contest.dump_prompts()
-        shuffled_prompts = self.contest.dump_shuffled_prompts()
-        if len(prompts) > 0:
-            await channel.send('\n'.join(prompts))
-            if len(shuffled_prompts) > 0:
-                await channel.send('\n'.join(shuffled_prompts))
-        else:
-            await channel.send('I don\'t have any prompts yet!')
+    @prompt.command(description='Remove a drawing subject')
+    @commands.guild_only()
+    @commands.has_permissions(manage_webhooks=True)
+    async def remove(self, ctx, *, phrase : str):
+        """Removes a drawing subect from guild prompts"""
+        async with ctx.typing():
+            draw_guild = self.get_draw_guild(ctx.guild)
+            if draw_guild.remove_prompt(phrase):
+                self.save_draw_guilds()
+                await ctx.send('removed "{}" from drawing prompts!'.format(phrase))
+            else:
+                await ctx.send('sorry, I didn\'t understand that one.')
 
     @prompt.command(description='Shuffle drawing subjects',hidden=True)
-    @custom_permissions.is_owner_or_admin()
+    @commands.guild_only()
+    @commands.has_permissions(manage_webhooks=True)
     async def shuffle(self, ctx):
-        channel = ctx.message.channel
-        async with channel.typing():
-            self.contest.shuffle_prompts()
-        await channel.send('Done!')
+        """Shuffles guild prompts"""
+        async with ctx.typing():
+            draw_guild = self.get_draw_guild(ctx.guild)
+            draw_guild.shuffle_prompts()
+            self.save_draw_guilds()
+            await channel.send('Done!')
 
