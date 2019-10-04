@@ -39,14 +39,13 @@ class Roles(commands.Cog):
     @commands.guild_only()
     async def list(self, ctx):
         guild = ctx.guild
-        channel = ctx.channel
         roles_list = []
-        async with channel.typing():
+        async with ctx.typing():
             roles_list = self.get_roles_list(guild)
         if len(roles_list):
-            await channel.send('```{}```'.format('\n'.join([role.name for role in roles_list])))
+            await ctx.send('```{}```'.format('\n'.join([role.name for role in roles_list])))
         else:
-            await channel.send('I couldn\'t find any roles!')
+            await ctx.send('I couldn\'t find any roles!')
 
     @role.command(description='Add yourself to a role')
     @commands.guild_only()
@@ -96,7 +95,6 @@ class Roles(commands.Cog):
 
     def get_roles_list(self, guild):
         roles_list = []
-
         if guild.id not in self.top_roles:
             self.update_top_role_from_guild(guild)
         top_role = self.top_roles[guild.id]
@@ -110,17 +108,13 @@ class Roles(commands.Cog):
         return roles_list
 
     def update_top_role_from_guild(self, guild):
-        guild = guild
-        top_role = guild.me.top_role
-        self.update_top_role(guild, top_role)
-
-    def update_top_role(self, guild, top_role):
         """Updates the top role for a guild"""
+        top_role = guild.me.top_role
         self.top_roles[guild.id] = top_role
 
     def role_inflator(self, guild, roles_string):
         """Takes a list of roles as a string and returns a list of Role objects"""
-        guild_roles = guild.roles
+        guild_roles = self.get_roles_list(guild)
         results = []
         roles = map(str.strip, roles_string.split(','))
         for role in roles:
