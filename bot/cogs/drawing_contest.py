@@ -11,9 +11,10 @@ class DrawingTracking(ContestTracking):
     Drawing Contest Tracking/Configuration
 
     """
-    def __init__(self, guild_id: str, channel_id: str=None, **kwargs):
+    def __init__(self, guild_id: str, scores: dict=None, channel_id: str=None, **kwargs):
         self.guild_id = guild_id
         self.channel_id = channel_id
+        self.scores = scores or dict()
         super(DrawingTracking, self).__init__(**kwargs)
 
     @classmethod
@@ -21,12 +22,28 @@ class DrawingTracking(ContestTracking):
         guild_id = data.get('guild_id')
         channel_id = data.get('channel_id')
         prompt_index = data.get('prompt_index')
+        scores = data.get('scores')
         prompts = Prompts.deserialize(data.get('prompts'))
-        previous_contest = Contest.deserialize(data.get('previous_contest'))
-        current_contest = Contest.deserialize(data.get('current_contest'))
-        return cls(guild_id=guild_id, channel_id=channel_id,
+        p_contest = data.get('previous_contest')
+        previous_contest = None
+        if p_contest:
+            previous_contest = Contest.deserialize(p_contest)
+        current_contest = None
+        c_contest = data.get('current_contest')
+        if c_contest:
+            current_contest = Contest.deserialize(c_contest)
+        return cls(guild_id=guild_id, channel_id=channel_id, scores=scores,
                 prompt_index=prompt_index, prompts=prompts,
                 previous_contest=previous_contest, current_contest=current_contest)
+
+    def collect_previous_scores(self) -> None:
+        for entry in self.previous_contest.entries:
+            if entry.removed:
+                continue
+            if not entry.name in self.scores:
+                self.scores[entry.name] = 1
+            else:
+                self.scores[entry.name] += 1
 
     def serialize(self) -> str:
         return self.__dict__
@@ -71,11 +88,9 @@ class DrawingContest(commands.Cog):
     async def on_message(self, message):
         if self.message_is_drawing_maybe(message):
             contest = self.get_contest(message.guild)
-            contest.add_entry(str(message.id))
+            entry = contest.add_entry(user_id=str(message.author),entry_id=str(message.id),points=1)
             await message.add_reaction('👍')
             self.save_contests()
-        else:
-            print("What is this")
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
@@ -121,6 +136,7 @@ class DrawingContest(commands.Cog):
     async def prompt_timer(self):
         now = datetime.now()
         for contest_end, guild_id in self.execution_queue:
+            print("{} - {}".format(contest_end, guild_id))
             if now > contest_end:
                 await self.end_contest(guild_id)
                 await self.start_contest(guild_id)
@@ -128,7 +144,9 @@ class DrawingContest(commands.Cog):
                 break
 
     def get_contest(self, guild: str):
-        guild_id = str(guild.id)
+        guild_id = guild
+        if isinstance(guild, discord.Guild):
+            guild_id = str(guild.id)
         if guild_id in self.contests:
             contest = self.contests[guild_id]
         else:
@@ -141,8 +159,10 @@ class DrawingContest(commands.Cog):
         channel = self.bot.get_channel(int(contest.channel_id))
         async with channel.typing():
             if contest.stop_contest():
+                contest.collect_previous_scores()
                 self.save_contests()
                 await channel.send('Drawing Contest has ended :(')
+                await self.say_scores(channel.guild)
             else:
                 await channel.send('I couldn\'t find a contest to end')
 
@@ -154,9 +174,9 @@ class DrawingContest(commands.Cog):
             prompt = contest.get_current_prompt()
             await self.say_prompt(channel, prompt)
             contest_end = contest.get_contest_end()
-            if contest_end is not None:
+            if contest_end:
                 self.save_contests()
-                self.execution_queue.append((contest_end, guild.id))
+                self.execution_queue.append((contest_end, contest.guild_id))
                 await channel.send('Contest ends at {}'.format(contest_end))
 
     async def say_prompt(self, channel: discord.abc.Messageable, prompt: str=None):
@@ -165,6 +185,21 @@ class DrawingContest(commands.Cog):
         else:
             await channel.send('Draw: **{}**!'.format(prompt))
 
+    async def say_scores(self, guild_object):
+        contest = self.get_contest(guild_object)
+        scores = list()
+        for username in contest.scores:
+            member = guild_object.get_member_named(username)
+            nick = member.nick or member.name
+            line = "**{}**: {}".format(nick, contest.scores[username])
+            scores.append(line)
+        scores.sort()
+        embed = discord.Embed.from_dict({
+            "title": "Drawing Contest Scores!",
+            "description": "\n".join(scores),
+            })
+        await ctx.send(embed=embed)
+
     @commands.group(name="draw")
     async def draw(self, ctx):
         """Drawing Contest Commands"""
@@ -172,6 +207,11 @@ class DrawingContest(commands.Cog):
     @draw.group(name="contest", description="Drawing Contest functions")
     async def contest(self, ctx):
         """Drawing Contest Functions"""
+
+    @contest.command(description="Print the scores")
+    @commands.guild_only()
+    async def scores(self, ctx):
+        await self.say_scores(ctx.guild)
 
     @contest.command(description="Start the contest!")
     @commands.guild_only()
@@ -240,5 +280,5 @@ class DrawingContest(commands.Cog):
             contest = self.get_contest(ctx.guild)
             contest.shuffle_prompts()
             self.save_contests()
-            await channel.send('Done!')
+            await ctx.send('Done!')
 

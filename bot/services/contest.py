@@ -26,7 +26,7 @@ class Prompts(object):
         return False
 
     def get_prompt(self, index) -> str:
-        if len(self.prompts) > 0:
+        if len(self.prompts) > 0 and len(self.prompts) > index:
             return self.prompts[index]
         return None
 
@@ -42,13 +42,17 @@ class Prompts(object):
             return
         return cls(**data)
 
-class Contest(object):
-    """ Contest for a specific prompt """
-    def __init__(self, entries: dict=None, contest_end: str=None,
-            contest_length: int=None):
-        self.entries = entries or dict()
-        self.contest_end = contest_end
-        self.contest_length = contest_length
+class Entry(object):
+    """ Represents an entry in a contest """
+    def __init__(self, id: str=None, points: int=0, removed: bool=False,
+            name: str=None):
+        self.id = id
+        self.points = points
+        self.removed = removed
+        self.name = name
+
+    def serialize(self) -> str:
+        return self.__dict__
 
     @classmethod
     def deserialize(cls, data):
@@ -56,23 +60,39 @@ class Contest(object):
             return
         return cls(**data)
 
+
+class Contest(object):
+    """ Contest for a specific prompt """
+    def __init__(self, entries: list=None, contest_end: str=None,
+            contest_length: int=None):
+        self.entries = entries or list()
+        self.contest_end = contest_end
+        self.contest_length = contest_length
+
+    @classmethod
+    def deserialize(cls, data):
+        contest_end = data.get('contest_end')
+        contest_length = data.get('contest_length')
+        entries = list()
+        for entry in data.get('entries'):
+            entries.append(Entry.deserialize(entry))
+        return cls(entries=entries, contest_end=contest_end,
+                contest_length=contest_length)
+
     def serialize(self) -> str:
         return self.__dict__
 
-    def add_entry(self, entry_id: str) -> bool:
-        if entry_id in self.entries:
+    def add_entry(self, entry: Entry) -> bool:
+        if entry.id in [x.id for x in self.entries]:
             return False
-        self.entries[entry_id] = {
-                "points": 0,
-                "removed": False
-                }
+        self.entries.append(entry)
         return True
 
     def get_entry(self, entry_id: str) -> dict:
         return self.entries.get(entry_id)
 
 class ContestTracking(object):
-    def __init__(self, prompt_index: int=-1, prompts: Prompts=None,
+    def __init__(self, prompt_index: int=0, prompts: Prompts=None,
             current_contest: Contest=None, previous_contest: Contest=None):
         #start the index at -1 because we increment before delivering the first
         self.prompt_index = prompt_index
@@ -105,6 +125,7 @@ class ContestTracking(object):
     def shuffle_prompts(self):
         if not self.prompts:
             return False
+        self.prompt_index = 0
         return self.prompts.shuffle_prompts()
 
     def get_current_prompt(self):
@@ -116,20 +137,21 @@ class ContestTracking(object):
         prompt = self.prompts.get_prompt(self.prompt_index)
         return prompt
 
-    def start_contest(self, interval_days: int=None):
+    def start_contest(self, interval_days: int=None) -> bool:
         if self.current_contest:
             raise Exception('Cannot start contest while one is running')
         if not interval_days and not self.previous_contest:
             raise Exception('Starting contests requires a previous contest '
                     'or a specified length')
         length = interval_days or self.previous_contest.contest_length
-        prompt = self.get_current_prompt()
-        if prompt is None:
-            return None
         now = datetime.now()
-        contest_end = now + timedelta(days=length)
-        self.current_contest = Contest(contest_end=contest_end.isoformat(' '),
-                contest_length=length)
+        contest_end = now + timedelta(minutes=length)
+        prompt = self.get_current_prompt()
+        if prompt:
+            self.current_contest = Contest(contest_end=contest_end.isoformat(' '),
+                    contest_length=length)
+            return True
+        return False
 
     def get_contest_end(self):
         if not self.current_contest:
@@ -143,12 +165,13 @@ class ContestTracking(object):
         self.current_contest = None
         return True
 
-    def add_entry(self, entry_id: str) -> bool:
+    def add_entry(self, entry_id: str, user_id: str, points: int=0) -> bool:
         if not self.current_contest:
             return False
-        if not entry_id:
+        if not entry_id or not user_id:
             return False
-        return self.current_contest.add_entry(entry_id)
+        entry = Entry(id=entry_id,name=user_id,points=points)
+        return self.current_contest.add_entry(entry)
 
     def get_entry(self, entry_id: str) -> dict:
         if not self.current_contest:
