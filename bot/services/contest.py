@@ -13,6 +13,7 @@ class Prompts(object):
         prompt = prompt.strip()
         if len(self.prompts) == 0:
             self.prompts.append(prompt)
+            return True
         if prompt.casefold() not in map(str.casefold, self.prompts):
             index = randrange(after_index+1,len(self.prompts)+1)
             self.prompts.insert(index, prompt)
