@@ -148,7 +148,7 @@ class ContestTracking(object):
                     'or a specified length')
         length = interval_days or self.previous_contest.contest_length
         now = datetime.now()
-        contest_end = now + timedelta(minutes=length)
+        contest_end = now + timedelta(days=length)
         prompt = self.get_current_prompt()
         if prompt:
             self.current_contest = Contest(contest_end=contest_end.isoformat(' '),
