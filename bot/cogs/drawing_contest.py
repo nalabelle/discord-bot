@@ -135,13 +135,12 @@ class DrawingContest(commands.Cog):
     @tasks.loop(seconds=60)
     async def prompt_timer(self):
         now = datetime.now()
-        for contest_end, guild_id in self.execution_queue:
+        to_process = [x for x in self.execution_queue if now > x[0]]
+        for contest_end, guild_id in to_process:
             print("{} - {}".format(contest_end, guild_id))
-            if now > contest_end:
-                await self.end_contest(guild_id)
-                await self.start_contest(guild_id)
-            else:
-                break
+            await self.end_contest(guild_id)
+            await self.start_contest(guild_id)
+            self.execution_queue.remove((contest_end, guild_id))
 
     def get_contest(self, guild: str):
         guild_id = guild
@@ -162,7 +161,7 @@ class DrawingContest(commands.Cog):
                 contest.collect_previous_scores()
                 self.save_contests()
                 await channel.send('Drawing Contest has ended :(')
-                await self.say_scores(channel.guild)
+                await self.say_scores(channel, channel.guild)
             else:
                 await channel.send('I couldn\'t find a contest to end')
 
@@ -185,7 +184,7 @@ class DrawingContest(commands.Cog):
         else:
             await channel.send('Draw: **{}**!'.format(prompt))
 
-    async def say_scores(self, guild_object):
+    async def say_scores(self, channel: discord.abc.Messageable, guild_object):
         contest = self.get_contest(guild_object)
         scores = list()
         for username in contest.scores:
@@ -198,7 +197,7 @@ class DrawingContest(commands.Cog):
             "title": "Drawing Contest Scores!",
             "description": "\n".join(scores),
             })
-        await ctx.send(embed=embed)
+        await channel.send(embed=embed)
 
     @commands.group(name="draw")
     async def draw(self, ctx):
@@ -211,7 +210,7 @@ class DrawingContest(commands.Cog):
     @contest.command(description="Print the scores")
     @commands.guild_only()
     async def scores(self, ctx):
-        await self.say_scores(ctx.guild)
+        await self.say_scores(ctx.channel,ctx.guild)
 
     @contest.command(description="Start the contest!")
     @commands.guild_only()
