@@ -1,4 +1,4 @@
-FROM lsiobase/alpine.python3
+FROM python:3-slim-buster
 
 # set python to use utf-8 rather than ascii.
 ENV PYTHONIOENCODING="UTF-8"
@@ -21,7 +21,6 @@ RUN \
    /tmp/*
 
 # add local files
-COPY root/ /
 COPY bot/ /app/
 VOLUME /app/config
-
+CMD ["python3", "/app/bot.py", "-d", "/config"]
