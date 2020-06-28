@@ -1,4 +1,6 @@
-bot/config/
+bot/config
+bot/config.yml
+bot/data
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
