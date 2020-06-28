@@ -1,11 +1,4 @@
-import os
 import giphypop
-
-try:
-    GIPHY_API_KEY = os.environ['GIPHY_API_KEY']
-except KeyError:
-    #library will use the public key if available
-    pass
 
 class Giphy:
     """ Giphy library """

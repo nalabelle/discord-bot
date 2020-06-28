@@ -9,7 +9,9 @@ class Weather(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.weather = WeatherLib()
+        forecast_api_key = bot.config.get('forecast_api_key', check_file=True)
+        google_api_key = bot.config.get('google_api_key', check_file=True)
+        self.weather = WeatherLib(forecast_api_key, google_api_key)
 
     @commands.command(description='Give me a location, get the weather')
     async def weather(self, ctx, *, location : str):
@@ -128,3 +130,11 @@ class Weather(commands.Cog):
                 )
 
         return weather_embed
+
+def setup(bot):
+    cog = Weather(bot)
+    bot.add_cog(cog)
+
+def teardown(bot):
+    bot.remove_cog('Weather')
+

@@ -4,18 +4,19 @@ import forecastio
 import datetime
 from dateutil import tz
 
-try:
-    FORECAST_API_KEY = os.environ['FORECAST_API_KEY']
-    GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
-except KeyError:
-    print("Please set the FORECAST_API_KEY and GOOGLE_MAP_API_KEY env variables before running")
-    sys.exit(1)
-
 class Weather:
     """ Weather commands """
 
+    def __init__(self, forecast_api_key, google_api_key):
+        if not google_api_key and not forecast_api_key:
+            raise Error('You need to supply both api keys')
+        self.forecast_api_key = forecast_api_key
+        self.google_api_key = google_api_key
+
     def get_weather(self, location_text):
         loc = self.geocode_location(location_text)
+        if loc is None:
+            raise Error('Could not find location')
         forecast = self.get_forecast(loc.lat, loc.lng)
         cur = forecast.currently()
         day = forecast.daily().data[0]
@@ -79,10 +80,10 @@ class Weather:
         return weather
 
     def geocode_location(self, location_text):
-        return geocoder.google(location_text)
+        return geocoder.google(location_text, key=self.google_api_key)
 
     def get_forecast(self, lat, lng):
-        return forecastio.load_forecast(FORECAST_API_KEY, lat, lng, units='si')
+        return forecastio.load_forecast(self.forecast_api_key, lat, lng, units='si')
 
     def sensible_speed(self, speed_ms):
         """Given speed in meters/second returns kilometers/hour"""

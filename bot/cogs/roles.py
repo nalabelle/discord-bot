@@ -125,4 +125,10 @@ class Roles(commands.Cog):
                     results.append(guild_role)
         return results
 
+def setup(bot):
+    cog = Roles(bot)
+    bot.add_cog(cog)
+
+def teardown(bot):
+    bot.remove_cog('Roles')
 

@@ -20,3 +20,10 @@ class Giphy(commands.Cog):
         giphy = self.giphy.get(phrase)
         return giphy
 
+def setup(bot):
+    cog = Giphy(bot)
+    bot.add_cog(cog)
+
+def teardown(bot):
+    bot.remove_cog('Giphy')
+

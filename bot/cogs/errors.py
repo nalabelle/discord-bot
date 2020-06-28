@@ -2,13 +2,14 @@ import logging
 import discord
 from discord.ext import commands
 
+log = logging.getLogger('ErrorsCog')
+log.setLevel('DEBUG')
+
 class Errors(commands.Cog):
     """ Error handling """
 
     def __init__(self, bot):
         self.bot = bot
-        self.logger = logging.getLogger('ErrorsCog')
-        self.logger.setLevel('DEBUG')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -20,4 +21,11 @@ class Errors(commands.Cog):
             await ctx.channel.send('I broke! 😭 {}'.format(str(error)))
             # log these so we can catch them
             raise error
+
+def setup(bot):
+    cog = Errors(bot)
+    bot.add_cog(cog)
+
+def teardown(bot):
+    bot.remove_cog('Errors')
 
