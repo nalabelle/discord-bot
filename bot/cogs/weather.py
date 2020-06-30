@@ -9,9 +9,7 @@ class Weather(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        forecast_api_key = bot.config.get('forecast_api_key', check_file=True)
-        google_api_key = bot.config.get('google_api_key', check_file=True)
-        self.weather = WeatherLib(forecast_api_key, google_api_key)
+        self.weather = WeatherLib()
 
     @commands.command(description='Give me a location, get the weather')
     async def weather(self, ctx, *, location : str):

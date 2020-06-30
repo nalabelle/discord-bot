@@ -1,96 +1,110 @@
+import logging
 import os
 import yaml
-import json
-import logging
-from collections.abc import MutableMapping
+
+from abc import ABCMeta
+from dataclasses import dataclass, field
+from dataclasses_json import DataClassJsonMixin, Exclude, config
+from typing import List, TypeVar, Type, Dict
 
 log = logging.getLogger('Config')
+A = TypeVar('A', bound="YamlDataclass")
 
-class Config(MutableMapping):
-    def __init__(self, path=None, allow_env=False):
-        self.config_file = path
-        self.create_save_folder()
-        self.mapping = self.load_config()
-        self.secrets_path = self.get('secrets_path', '/var/run/secrets')
-        self.use_env = allow_env
+@dataclass
+class YamlDataClass(DataClassJsonMixin, metaclass=ABCMeta):
+    __file_path__: str = field(default=None, init=False,
+            metadata=config(exclude=Exclude.ALWAYS))
 
-    def load_config(self):
-        log.info('Loading config... {}'.format(self.config_file))
-        config = {}
-        if not os.path.isfile(self.config_file):
-            log.warn('No config found!')
-        else:
-            with open(self.config_file, "r") as f:
-                config = yaml.safe_load(f)
-        return config
+    def __path__(self):
+        if self.__file_path__ is not None:
+            return self.__file_path__
+        config = Config()
+        cls_name = self.__class__.__name__
+        path = os.path.join(config.data_path, "{}.yml".format(cls_name.replace('Data','').lower()))
+        self.__file_path__ = path
+        return path
 
-    def save_config(self):
+    def create_save_folder(self, path: str) -> None:
+        dir_path = os.path.dirname(path)
+        if os.path.exists(dir_path):
+            return
+        log.info(\
+                'Creating data directory: {}'.format(dir_path))
+        os.mkdir(dir_path)
+
+    def load(self, path: str = None) -> bool:
+        if not path:
+            path = self.__path__()
+        if os.path.exists(path):
+            with open(path, "r", encoding="UTF-8") as f:
+                data_dict = yaml.safe_load(f)
+            self.__dict__.update(self.__class__.schema().load(data_dict).__dict__)
+            return True
+        return False
+
+    @classmethod
+    def from_yaml(cls: Type[A], path: str, infer_missing=False) -> A:
+        with open(path, "r", encoding="UTF-8") as f:
+            data_dict = yaml.safe_load(f)
+        return cls.from_dict(data_dict, infer_missing=infer_missing)
+
+
+    def save(self, path: str = None) -> bool:
+        if not path:
+            path = self.__path__()
         # these dumpers like to write empty files when they crash
-        conf_string = yaml.safe_dump(self.mapping)
-        with open(self.config_file, "w") as f:
+        self.create_save_folder(path)
+        conf_string = yaml.safe_dump(self.to_dict())
+        with open(path, "w", encoding="UTF-8") as f:
             f.write(conf_string)
+        return True
 
-    def dump(self):
-        return yaml.dump(self.mapping)
+    def dump(self) -> str:
+        return yaml.dump(self.to_dict())
 
-    def __getitem__(self, key, other=None, check_file=False):
-        return self.get(**args)
+class Data(YamlDataClass):
+    pass
 
-    def get(self, key, default=None, check_file=False):
-        value = self.mapping.get(key, default)
-        if not default and not value and check_file:
-            path = os.path.join(self.secrets_path, key)
+@dataclass
+class BotConfig(YamlDataClass):
+    command_prefix: str = os.getenv('COMMAND_PREFIX', '!')
+    extensions: List[str] = field(default_factory=list)
+    log_level: str = os.getenv('LOG_LEVEL', 'ERROR')
+    data_path: str = os.getenv('DATA_PATH') or \
+        os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../data'))
+    secrets: Dict[str, str] = field(default_factory=dict)
+
+class ConfigSingleton:
+    config_instance = None
+    secrets_instance = None
+
+def Config():
+    if ConfigSingleton.config_instance is None:
+        ConfigSingleton.config_instance = BotConfig()
+    return ConfigSingleton.config_instance
+
+class BotSecrets:
+    class MissingSecretError(Exception):
+        pass
+
+    def get(self, key):
+        value = os.getenv(key.upper())
+        if value:
+            return value
+        config = Config()
+        lookup = "{}_file".format(key.lower())
+        path = os.getenv(lookup.upper()) or config.secrets.get(lookup)
+        if path:
             with open(path, 'r') as file:
                 value = file.read().strip()
-        return value
+            return value
+        raise self.MissingSecretError("Could not find secret for {}".format(key))
 
-    def __setitem__(self, key, value):
-        return self.get(**args)
-
-    def set(self, prop, value):
-        self.mapping[prop] = value
-
-    def __delitem__(self):
-        '''
-         Your Implementation for deleting the Item goes here
-        '''
-        raise NotImplementedError("del needs to be implemented")
-    def __iter__(self):
-        '''
-         Your Implementation for iterating the dictionary goes here
-        '''
-        raise NotImplementedError("Iterating the collection needs to be implemented")
-    def __len__(self):
-        '''
-         Your Implementation for determing the size goes here
-        '''
-        raise NotImplementedError("len(obj) determination needs to be implemented")
-
-    def create_save_folder(self):
-        if not self.config_file:
-            return
-        path = os.path.dirname(self.config_file)
-        if not os.path.exists(path):
-            log.info(\
-                    'Creating config directory: {}'.format(path))
-            os.mkdir(path)
-
-#    def set(self, prop, value):
-#        keys = prop.split('.')
-#        nesting_level = self.conf
-#        for nested_key in keys[:-1]:
-#            nesting_level = nesting_level.setdefault(nested_key, {})
-#        nesting_level[keys[-1]] = value
-#
-#    def get(self, prop, default=None, check_file=False):
-#        value = self.conf.get(prop, default)
-#        #nesting_level = self.conf
-#        #keys = prop.split('.')
-#        #for nested_key in keys:
-#        #    value = nesting_level.get(nested_key)
-#        #    if value is not None:
-#        #        nesting_level = value
-#        #    else:
-#        #        return None
-#        return value
+def Secrets(secret_key: str = None):
+    if ConfigSingleton.secrets_instance is None:
+        ConfigSingleton.secrets_instance = BotSecrets()
+    if secret_key:
+        return ConfigSingleton.secrets_instance.get(secret_key)
+    else:
+        return ConfigSingleton.secrets_instance
 

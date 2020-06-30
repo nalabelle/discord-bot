@@ -2,34 +2,32 @@ import discord
 import asyncio
 from discord.ext import commands
 from ext import custom_permissions
-from services.config import Config
+from dataclasses import dataclass
+from services.config import Data
+
+@dataclass
+class StatusData(Data):
+    action: str = 'playing'
+    status: str = 'with gear oil'
 
 class Status(commands.Cog):
     """ Now Playing """
 
     def __init__(self, bot):
         self.bot = bot
-        config = self.bot.config.get('presence', dict())
-        self.action = config.get('action', 'playing')
-        self.status = config.get('status', 'with gear oil')
-
-    def dump(self):
-        return {
-                "action": self.action,
-                "status": self.status
-                }
+        self.data = StatusData()
+        self.data.load()
 
     async def set_initial_status(self):
-        function = getattr(self, self.action)
-        await function(self.status)
+        function = getattr(self, self.data.action)
+        await function(self.data.status)
 
     @commands.command(hidden=True)
     @custom_permissions.is_owner_or_admin()
     async def status(self, ctx, action : str, status : str):
-        self.action = action
-        self.status = status
-        self.bot.config.set('presence', self.dump())
-        self.bot.config.save_config()
+        self.data.action = action
+        self.data.status = status
+        self.data.save()
 
         function = getattr(self, action)
         await function(status)

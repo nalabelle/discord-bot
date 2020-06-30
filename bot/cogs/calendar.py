@@ -1,26 +1,49 @@
 import discord
 import logging
+from queue import PriorityQueue
+from dataclasses import dataclass, field
+from typing import List, Dict
 from discord.ext import commands, tasks
 from services.google_calendar import GoogleCalendar
-from services.config import Config
+from services.config import Data
 import dateutil.parser
 import dateutil.tz
 from datetime import datetime, timedelta
 
 log = logging.getLogger('CalendarCog')
+
+@dataclass
+class User(Data):
+    user_id: int
+    refresh_token: str = None
+
+@dataclass
+class Event(Data):
+    datetime: datetime
+    title: str
+    description: str
+
+@dataclass
+class Subscription(Data):
+    calendar_id: str
+    user_id: int
+    channel_id: int
+    guild_id: int
+
+@dataclass
+class CalendarData(Data):
+    users: Dict[int, User] = field(default_factory=dict)
+    subscriptions: List[Subscription] = field(default_factory=list)
+
 class Calendar(commands.Cog):
     """ Calendar commands """
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config(path=bot.get_storage_path('calendar.yml'))
+        self.events = PriorityQueue()
         self.awaiting_user_auth = {}
-
-        if self.config.get('users') is None:
-            self.config.set('users', users)
-
-        if self.config.get('guilds') is None:
-            self.config.set('guilds', {})
+        self.data = CalendarData()
+        self.data.load()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -30,8 +53,9 @@ class Calendar(commands.Cog):
     @tasks.loop(count=1)
     async def print_calendar_week(self):
         await discord.utils.sleep_until(self.time)
+        return
         calendars = self.get_all_calendars()
-        users = self.config.get('users')
+        users = self.data.users
         events = []
         for (calendar_id, calendar) in calendars:
             log.warn(calendar)
@@ -63,70 +87,51 @@ class Calendar(commands.Cog):
 
     def get_all_calendars(self):
         calendars = []
-        guilds = self.config.get('guilds')
-        for guild in guilds.values():
-            for channel in guild.values():
-                for calendar in channel.items():
-                    calendars.append(calendar)
+        for subscription in self.data.subscriptions:
+            calendars.append(subscription.calendar_id)
         return calendars
 
     @commands.command()
     async def subscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
         channel = ctx.message.channel
-        user = ctx.message.author.id
-        users = self.config.get('users')
-        guilds = self.config.get('guilds')
+        user = ctx.message.author
         if not sub_chan:
             await channel.send("Could not find channel {}".format(chan))
             return
-        if user not in users:
+        if user.id not in self.data.users:
             calendar = GoogleCalendar()
             url = calendar.get_auth_url()
-            self.awaiting_user_auth[user] = calendar
+            self.awaiting_user_auth[user.id] = calendar
             message = "Click the following link to authorize me to view your Google Calendars." \
                     "Once Done, use the auth_token command to submit the code it displays." \
                     "{}".format(url)
             await channel.send(message)
         else:
-            refresh_token = users.get(user)['refresh_token']
+            refresh_token = self.data.users.get(user.id).refresh_token
             calendar = GoogleCalendar(calendar_id=calendar_id, refresh_token=refresh_token)
             info = calendar.get_info()
-            guild = guilds.get(channel.guild.id)
-            if guild:
-                chan = guild.get(sub_chan.id)
-                if chan:
-                    cal = chan.get(info["id"])
-                    if cal:
-                        await chan.send("Already subscribed!")
-                        return
-                    else:
-                        chan[info.id] = {"events": ["all", "weekly"]}
-                else:
-                    chan = {}
-                    chan[info["id"]] = {"events": ["all", "weekly"]}
-                    guild[sub_chan.id] = chan
-            else:
-                guild = {}
-                chan = {}
-                chan[info["id"]] = {"user": user.id, "events": ["all", "weekly"]}
-                guild[sub_chan.id] = chan
-                guilds[channel.guild.id] = guild
+            subscription = Subscription(calendar_id=info["id"], user_id=user.id,
+                    channel_id=sub_chan.id, guild_id=channel.guild.id)
+            if subscription in self.data.subscriptions:
+                await channel.send("Already subscribed!")
+                return
+            self.data.subscriptions.append(subscription)
+            self.data.save()
             await channel.send("Subscribed {} to {}".format(sub_chan, info['summary']))
-            self.config.save_config()
 
     @commands.command()
     async def auth_token(self, ctx, *, auth_token : str):
         channel = ctx.message.channel
-        user = ctx.message.author.id
-        awaiting_auth = self.awaiting_user_auth.get(user)
+        user = ctx.message.author
+        awaiting_auth = self.awaiting_user_auth.get(user.id)
         if not awaiting_auth:
             await channel.send("I don't have any auths open, maybe restart the subscription?")
             return
         refresh_token = awaiting_auth.submit_auth_code(auth_token)
-        users = self.config.get('users')
-        if user not in users:
-            users[user] = {"refresh_token": refresh_token}
-            self.config.save_config()
+        if user.id not in self.data.users:
+            user_data = User(user_id=user.id, refresh_token=refresh_token)
+            self.data.users[user.id] = user_data
+            self.data.save()
         await channel.send('authed')
 
 def setup(bot):

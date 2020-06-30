@@ -3,15 +3,18 @@ import geocoder
 import forecastio
 import datetime
 from dateutil import tz
+from services.config import Secrets
 
 class Weather:
     """ Weather commands """
 
-    def __init__(self, forecast_api_key, google_api_key):
-        if not google_api_key and not forecast_api_key:
-            raise Error('You need to supply both api keys')
-        self.forecast_api_key = forecast_api_key
-        self.google_api_key = google_api_key
+    def __init__(self):
+        self.forecast_api_key = Secrets('forecast_api_key')
+        self.google_api_key = Secrets('google_api_key')
+        if not self.forecast_api_key:
+            raise Error('Need forecast_api_key')
+        if not self.google_api_key:
+            raise Error('Need google_api_key')
 
     def get_weather(self, location_text):
         loc = self.geocode_location(location_text)
