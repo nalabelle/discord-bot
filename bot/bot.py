@@ -26,7 +26,6 @@ class DiscordBot(commands.Bot):
     def configure_logging(self):
         logging_level = self.config.log_level.upper();
         log.setLevel(logging_level)
-        log.info(log.level)
 
     def run(self):
         self.load_extensions()

@@ -1,27 +1,20 @@
 import discord
+import asyncio
 import logging
+import yaml
 from queue import PriorityQueue
 from dataclasses import dataclass, field
 from typing import List, Dict
 from discord.ext import commands, tasks
 from services.google_calendar import GoogleCalendar
 from services.config import Data
+import pyrfc3339 as rfc3339
 import dateutil.parser
 import dateutil.tz
-from datetime import datetime, timedelta
+from dateutil.tz import tzutc
+from datetime import time, datetime, timedelta
 
 log = logging.getLogger('CalendarCog')
-
-@dataclass
-class User(Data):
-    user_id: int
-    refresh_token: str = None
-
-@dataclass
-class Event(Data):
-    datetime: datetime
-    title: str
-    description: str
 
 @dataclass
 class Subscription(Data):
@@ -31,9 +24,25 @@ class Subscription(Data):
     guild_id: int
 
 @dataclass
+class User(Data):
+    user_id: int
+    refresh_token: str = None
+
+@dataclass(order=True)
+class Event(Data):
+    start: datetime
+    end: datetime
+    title: str
+    description: str
+    subscription: Subscription
+
+@dataclass
 class CalendarData(Data):
     users: Dict[int, User] = field(default_factory=dict)
     subscriptions: List[Subscription] = field(default_factory=list)
+#    weekly_update_day: int
+#    weekly_update_time: time
+
 
 class Calendar(commands.Cog):
     """ Calendar commands """
@@ -44,52 +53,82 @@ class Calendar(commands.Cog):
         self.awaiting_user_auth = {}
         self.data = CalendarData()
         self.data.load()
+        self.collect_next_events()
+        self.set_next_execution()
 
     @commands.Cog.listener()
     async def on_ready(self):
-        self.time = datetime.strptime('2020-06-28 12:00:00 -0700', '%Y-%m-%d %H:%M:%S %z')
-        await self.print_calendar_week.start()
+        self.tick.start()
 
-    @tasks.loop(count=1)
-    async def print_calendar_week(self):
-        await discord.utils.sleep_until(self.time)
-        return
-        calendars = self.get_all_calendars()
-        users = self.data.users
-        events = []
-        for (calendar_id, calendar) in calendars:
-            log.warn(calendar)
-            user = users.get(calendar["user"])
-            if user:
-                refresh_token = user["refresh_token"]
-                cal = GoogleCalendar(calendar_id=calendar_id, refresh_token=refresh_token)
-                time_min = datetime.utcnow().isoformat('T') + "Z"
-                time_max = datetime.utcnow() + timedelta(days=7)
-                time_max = time_max.isoformat('T') + "Z"
-                log.warn(time_min)
-                #items = cal.list_events(timeMin=datetime.datetime.utcnow().isoformat('T'))
-                items = cal.list_events(
-                        orderBy="startTime", timeMin=time_min,
-                        timeMax=time_max,singleEvents=True)["items"]
-                log.warn(items)
-                for item in items:
-                    events.append("{} @ {}".format(item["summary"], item["start"]["dateTime"]))
+    def set_next_execution(self):
+        #execute once an hour, or sooner if we have an event coming up
+        next_execution = datetime.utcnow().replace(tzinfo=tzutc(),minute=0,second=0)+timedelta(hours=1)
+        if not self.events.empty():
+            peek = self.events.queue[0]
+            next_execution = min(next_execution, peek.start)
+        self.next_execution = next_execution
+        log.debug("Next Calendar Update: {}, Next Event: {}".format(rfc3339.generate(next_execution),
+            rfc3339.generate(peek.start)))
 
-        chid = 700249856039452774
-        out_chan = discord.utils.get(self.bot.get_all_channels(), id=chid)
-        await out_chan.send("{}".format("\n".join(events)))
-#
+    @tasks.loop()
+    async def tick(self):
+        #block until it's time to chime
+        await discord.utils.sleep_until(self.next_execution)
+        self.collect_next_events()
+        self.set_next_execution()
+        await self.chime()
 
-#    @commands.command()
-#    async def calendars(self, ctx):
-#        calendars = self.get_all_calendars()
-#        await ctx.channel.send("{}".format(",".join(calendars)))
+    async def chime(self):
+        while not self.events.empty():
+            peek = self.events.queue[0]
+            if datetime.utcnow().replace(tzinfo=tzutc()) >= peek.start:
+                event = self.events.get()
+                out_chan = discord.utils.get(self.bot.get_all_channels(),
+                        id=event.channel_id)
+                message = "{}".format(event.title)
+                if event.description:
+                    message = "{}\n>>> {}".format(message, event.description)
+                await out_chan.send(message)
+            else:
+                # the event starts after now, PQ is in order
+                break
 
-    def get_all_calendars(self):
-        calendars = []
+    @commands.command()
+    async def calendars(self, ctx):
+        temp = []
+        await ctx.channel.send("Calendars:")
+        while not self.events.empty():
+            event = self.events.get()
+            temp.append(event)
+            await ctx.channel.send("{}".format(yaml.dump(event)))
+        for event in temp:
+            self.events.put(event)
+
+    def collect_next_events(self):
+        seen = []
         for subscription in self.data.subscriptions:
-            calendars.append(subscription.calendar_id)
-        return calendars
+            if subscription.calendar_id not in seen:
+                seen.append(subscription.calendar_id)
+                calendar_user = self.data.users.get(subscription.user_id)
+                calendar = GoogleCalendar(calendar_id=subscription.calendar_id,
+                        refresh_token=calendar_user.refresh_token)
+                time_min = rfc3339.generate(datetime.utcnow().replace(tzinfo=tzutc()))
+                time_max = rfc3339.generate(
+                        (datetime.utcnow() + timedelta(days=7)).replace(tzinfo=tzutc())
+                        )
+                calendar_items = calendar.list_events(orderBy="startTime", timeMin=time_min,
+                        timeMax=time_max,singleEvents=True)["items"]
+                for item in calendar_items:
+                    start_time = rfc3339.parse(item["start"]["dateTime"])
+                    if datetime.utcnow().replace(tzinfo=tzutc()) >= start_time:
+                        continue
+                    end_time = rfc3339.parse(item["end"]["dateTime"])
+                    title = item["summary"]
+                    description = item.get("description")
+                    event = Event(start=start_time, end=end_time, title=title,
+                            description=description, subscription=subscription)
+                    self.events.put(event)
+
 
     @commands.command()
     async def subscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
