@@ -4,7 +4,7 @@ import logging
 import yaml
 from queue import PriorityQueue
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Optional
 from discord.ext import commands, tasks
 from services.google_calendar import GoogleCalendar
 from services.config import Data
@@ -31,18 +31,17 @@ class User(Data):
 @dataclass(order=True)
 class Event(Data):
     start: datetime
-    end: datetime
     title: str
     description: str
     subscription: Subscription
+    end: datetime = None
 
 @dataclass
 class CalendarData(Data):
+    summary_day: Optional[int] = None
+    summary_hour: Optional[int] = None
     users: Dict[int, User] = field(default_factory=dict)
     subscriptions: List[Subscription] = field(default_factory=list)
-#    weekly_update_day: int
-#    weekly_update_time: time
-
 
 class Calendar(commands.Cog):
     """ Calendar commands """
@@ -79,30 +78,32 @@ class Calendar(commands.Cog):
         await self.chime()
 
     async def chime(self):
+        now = datetime.utcnow().replace(tzinfo=tzutc())
+        summary_chime = False
+        if self.data.summary_day and self.data.summary_hour:
+            if now.weekday is self.data.summary_day and now.hour is self.data.summary_hour:
+                summary_chime = True
         while not self.events.empty():
             peek = self.events.queue[0]
-            if datetime.utcnow().replace(tzinfo=tzutc()) >= peek.start:
+            if now >= peek.start:
                 event = self.events.get()
-                out_chan = discord.utils.get(self.bot.get_all_channels(),
-                        id=event.channel_id)
                 message = "{}".format(event.title)
                 if event.description:
                     message = "{}\n>>> {}".format(message, event.description)
                 await out_chan.send(message)
             else:
-                # the event starts after now, PQ is in order
+                # the event starts after now, PQ is in order, and this isn't a summary
                 break
-
-    @commands.command()
-    async def calendars(self, ctx):
-        temp = []
-        await ctx.channel.send("Calendars:")
-        while not self.events.empty():
-            event = self.events.get()
-            temp.append(event)
-            await ctx.channel.send("{}".format(yaml.dump(event)))
-        for event in temp:
-            self.events.put(event)
+        if summary_chime and not self.events.empty():
+            temp = []
+            message = "**Events This Week**"
+            while not self.events.empty():
+                event = self.events.get()
+                temp.append(event)
+                message = message + "\n- {} on {}".format(event.title, event.start.strftime('%a at %H:%M'))
+            for event in temp:
+                self.events.put(event)
+            await ctx.channel.send(message)
 
     def collect_next_events(self):
         seen = []
@@ -119,16 +120,49 @@ class Calendar(commands.Cog):
                 calendar_items = calendar.list_events(orderBy="startTime", timeMin=time_min,
                         timeMax=time_max,singleEvents=True)["items"]
                 for item in calendar_items:
-                    start_time = rfc3339.parse(item["start"]["dateTime"])
+                    start_time = None
+                    if "dateTime" in item["start"]:
+                        start_time = rfc3339.parse(item["start"]["dateTime"])
+                    else:
+                        start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d').replace(hour=0,minute=0,second=0,tzinfo=tzutc())
                     if datetime.utcnow().replace(tzinfo=tzutc()) >= start_time:
                         continue
-                    end_time = rfc3339.parse(item["end"]["dateTime"])
+                    end_time = None
+                    if item["end"]:
+                        if "dateTime" in item["end"]:
+                            end_time = rfc3339.parse(item["end"]["dateTime"])
                     title = item["summary"]
                     description = item.get("description")
                     event = Event(start=start_time, end=end_time, title=title,
                             description=description, subscription=subscription)
                     self.events.put(event)
 
+    @commands.command()
+    async def calendars(self, ctx):
+        temp = []
+        await ctx.channel.send("Calendars:")
+        while not self.events.empty():
+            event = self.events.get()
+            temp.append(event)
+            await ctx.channel.send("{}".format(yaml.dump(event)))
+        for event in temp:
+            self.events.put(event)
+
+    @commands.command()
+    async def summary(self, ctx, summary_day : int, summary_hour : int):
+        channel = ctx.message.channel
+        errors = []
+        if not 0 <= summary_day <= 6:
+            errors.append("summary day out of range")
+        if not 0 <= summary_hour <= 23:
+            errors.append("summary hour out of range")
+        if errors:
+            await ctx.channel.send(", ".join(errors))
+            return
+        self.data.summary_day = summary_day
+        self.data.summary_hour = summary_hour
+        self.data.save()
+        await ctx.channel.send("summary set")
 
     @commands.command()
     async def subscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
@@ -178,5 +212,7 @@ def setup(bot):
     bot.add_cog(cog)
 
 def teardown(bot):
+    cog = bot.get_cog('Calendar')
+    cog.tick.stop()
     bot.remove_cog('Calendar')
 
