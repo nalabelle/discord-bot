@@ -24,7 +24,7 @@ class Status(commands.Cog):
 
     @commands.command(hidden=True)
     @custom_permissions.is_owner_or_admin()
-    async def status(self, ctx, action : str, status : str):
+    async def status(self, ctx, action : str, *, status : str):
         self.data.action = action
         self.data.status = status
         self.data.save()
@@ -36,7 +36,7 @@ class Status(commands.Cog):
         await self.bot.change_presence(activity=discord.Game(name=status))
 
     async def streaming(self, status : str):
-        await self.bot.change_presence(activity=discord.Streaming(name=status))
+        await self.bot.change_presence(activity=discord.Streaming(name=status,url="https://www.youtube.com/watch?v=uc6f_2nPSX8"))
 
     async def watching(self, status : str):
         await self.bot.change_presence(activity=discord.Activity(
