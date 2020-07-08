@@ -43,12 +43,17 @@ class CalendarData(Data):
     users: Dict[int, User] = field(default_factory=dict)
     subscriptions: List[Subscription] = field(default_factory=list)
 
+class CalendarQueue(PriorityQueue):
+    def _put(self, item):
+        if item not in self.queue:
+            return super()._put(item)
+
 class Calendar(commands.Cog):
     """ Calendar commands """
 
     def __init__(self, bot):
         self.bot = bot
-        self.events = PriorityQueue()
+        self.events = CalendarQueue()
         self.awaiting_user_auth = {}
         self.data = CalendarData()
         self.data.load()
@@ -90,6 +95,8 @@ class Calendar(commands.Cog):
                 message = "{}".format(event.title)
                 if event.description:
                     message = "{}\n>>> {}".format(message, event.description)
+                out_chan = discord.utils.get(self.bot.get_all_channels(),
+                        id=event.subscription.channel_id)
                 await out_chan.send(message)
             else:
                 # the event starts after now, PQ is in order, and this isn't a summary
@@ -103,7 +110,9 @@ class Calendar(commands.Cog):
                 message = message + "\n- {} on {}".format(event.title, event.start.strftime('%a at %H:%M'))
             for event in temp:
                 self.events.put(event)
-            await ctx.channel.send(message)
+            out_chan = discord.utils.get(self.bot.get_all_channels(),
+                    id=event.subscription.channel_id)
+            await out_chan.send(message)
 
     def collect_next_events(self):
         seen = []
@@ -136,17 +145,6 @@ class Calendar(commands.Cog):
                     event = Event(start=start_time, end=end_time, title=title,
                             description=description, subscription=subscription)
                     self.events.put(event)
-
-    @commands.command()
-    async def calendars(self, ctx):
-        temp = []
-        await ctx.channel.send("Calendars:")
-        while not self.events.empty():
-            event = self.events.get()
-            temp.append(event)
-            await ctx.channel.send("{}".format(yaml.dump(event)))
-        for event in temp:
-            self.events.put(event)
 
     @commands.command()
     async def summary(self, ctx, summary_day : int, summary_hour : int):
