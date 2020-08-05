@@ -14,10 +14,9 @@ class DiscordBot(commands.Bot):
     default_config_path = os.path.join(pwd, 'config.yml')
 
     def __init__(self, config_path=None):
-        self.config = Config()
         if not config_path:
             config_path = self.default_config_path
-        self.config.load(path=config_path)
+        self.config = Config(path=config_path)
         self.configure_logging()
         prefix = self.config.command_prefix
         prefix = commands.when_mentioned_or(prefix)

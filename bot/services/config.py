@@ -78,9 +78,12 @@ class ConfigSingleton:
     config_instance = None
     secrets_instance = None
 
-def Config():
+def Config(path: str = None):
     if ConfigSingleton.config_instance is None:
-        ConfigSingleton.config_instance = BotConfig()
+        if path:
+            ConfigSingleton.config_instance = BotConfig.from_yaml(path)
+        else:
+            ConfigSingleton.config_instance = BotConfig()
     return ConfigSingleton.config_instance
 
 class BotSecrets:
