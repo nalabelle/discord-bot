@@ -78,9 +78,9 @@ class Calendar(commands.Cog):
     async def tick(self):
         #block until it's time to chime
         await discord.utils.sleep_until(self.next_execution)
+        await self.chime()
         self.collect_next_events()
         self.set_next_execution()
-        await self.chime()
 
     async def chime(self):
         now = datetime.utcnow().replace(tzinfo=tzutc())
@@ -116,6 +116,8 @@ class Calendar(commands.Cog):
 
     def collect_next_events(self):
         seen = []
+        while not self.events.empty():
+            self.events.get()
         for subscription in self.data.subscriptions:
             if subscription.calendar_id not in seen:
                 seen.append(subscription.calendar_id)
