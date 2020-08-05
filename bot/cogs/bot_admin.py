@@ -25,7 +25,7 @@ class BotAdmin(commands.Cog):
     async def load(self, ctx, *, extension : str):
         try:
             self.bot.load_extension(extension)
-            self.bot.config.get('extensions').append(extension)
+            self.bot.config.extensions.append(extension)
             self.bot.config.save()
             await ctx.message.channel.send('Extension loaded: {}'.format(extension))
         except ExtensionNotFound:
@@ -43,6 +43,8 @@ class BotAdmin(commands.Cog):
     async def unload(self, ctx, *, extension : str):
         try:
             self.bot.unload_extension(extension)
+            self.bot.config.extensions.remove(extension)
+            self.bot.config.save()
             await ctx.message.channel.send('Extension unloaded: {}'.format(extension))
         except ExtensionNotLoaded:
             await ctx.message.channel.send('Extension not loaded: {}'.format(extension))

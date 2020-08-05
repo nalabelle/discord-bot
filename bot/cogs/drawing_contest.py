@@ -3,7 +3,8 @@ import queue
 import discord
 from discord.ext import tasks,commands
 from services.contest import ContestTracking, Prompts, Contest
-import services.config
+from dataclasses import dataclass, field
+from services.config import Data
 from ext import custom_permissions
 
 class DrawingTracking(ContestTracking):
