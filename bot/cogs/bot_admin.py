@@ -17,7 +17,7 @@ class BotAdmin(commands.Cog):
     @commands.command(hidden=True)
     @commands.is_owner()
     async def save_config(self, ctx):
-        self.bot.config.save_config()
+        self.bot.config.save()
         await ctx.message.channel.send('Saved')
 
     @commands.command(hidden=True)
@@ -26,6 +26,7 @@ class BotAdmin(commands.Cog):
         try:
             self.bot.load_extension(extension)
             self.bot.config.get('extensions').append(extension)
+            self.bot.config.save()
             await ctx.message.channel.send('Extension loaded: {}'.format(extension))
         except ExtensionNotFound:
             await ctx.message.channel.send('Extension not found: {}'.format(extension))
