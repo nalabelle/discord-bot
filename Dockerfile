@@ -23,4 +23,4 @@ RUN \
 # add local files
 COPY bot/ /app/
 VOLUME /app/config
-CMD ["python3", "/app/bot.py", "-d", "/config"]
+CMD ["python3", "/app/bot.py", "--config", "/app/config/config.yml"]
