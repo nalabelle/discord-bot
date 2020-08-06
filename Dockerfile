@@ -12,4 +12,5 @@ RUN \
    /tmp/*
 
 VOLUME /app/data
-CMD ["python3", "/app/bot.py", "--data", "/app/data", "--config", "/app/data/config.yml"]
+ENTRYPOINT ["python3", "/app/bot.py"]
+CMD ["--data", "/app/data", "--config", "/app/data/config.yml"]
