@@ -1,0 +1,5 @@
+command_prefix: .
+extension_filters:
+  - .git
+extensions: []
+log_level: debug

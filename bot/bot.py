@@ -1,56 +1,80 @@
-#!/usr/bin/env python3
-import argparse
+import glob
+from pathlib import Path
+import logging
 import os
 import sys
-import logging
-from services.config import Config, Secrets
+from datafile import DataFile
+from file_secrets import secret
+from dataclasses import dataclass, field
 from discord.ext import commands
+from typing import List, Dict
 
-logging.basicConfig()
 log = logging.getLogger('DiscordBot')
 
-class DiscordBot(commands.Bot):
-    pwd = os.path.dirname(os.path.realpath(__file__))
-    default_config_path = os.path.join(pwd, 'config.yml')
+@dataclass
+class BotConfig(DataFile):
+    command_prefix: str = os.getenv('COMMAND_PREFIX', '!')
+    extension_filters: List[str] = field(default_factory=lambda: ['.git'])
+    extensions: List[str] = field(default_factory=list)
+    log_level: str = os.getenv('LOG_LEVEL', 'ERROR')
 
-    def __init__(self, config_path=None):
-        if not config_path:
-            config_path = self.default_config_path
-        self.config = Config(path=config_path)
-        self.configure_logging()
+class DiscordBot(commands.Bot):
+    data_path = None
+    loaded_extensions = []
+    config = None
+
+    def __init__(self, config_path: str, data_path: str):
+        self.data_path = data_path
+        self.configure(config_path)
         prefix = self.config.command_prefix
         prefix = commands.when_mentioned_or(prefix)
-        return super(commands.Bot, self).__init__(command_prefix=prefix)
+        super(commands.Bot, self).__init__(command_prefix=prefix)
+        for extension in self.config.extensions:
+            self.load_extension(extension)
 
-    def configure_logging(self):
-        logging_level = self.config.log_level.upper();
+    def extension_path(self, ext: str) -> Path:
+        path = Path(self.data_path, 'extensions', ext)
+        path = path.relative_to(Path('.').resolve())
+        return path
+
+    def extension_import(self, ext: str):
+        path = self.extension_path(ext)
+        return str(path).replace('/','.')
+
+    def configure(self, path: str):
+        self.config = BotConfig.from_yaml(path=path)
+        if not os.path.exists(path):
+            self.config.save()
+        logging_level = self.config.log_level.upper()
         log.setLevel(logging_level)
 
+    def load_extension(self, ext: str) -> None:
+        super().load_extension(self.extension_import(ext))
+        if ext not in self.config.extensions:
+            self.config.extensions.append(ext)
+            self.config.save()
+
+    def unload_extension(self, ext: str) -> None:
+        super().unload_extension(self.extension_import(ext))
+        if ext in self.config.extensions:
+            self.config.extensions.remove(ext)
+            self.config.save()
+
+    def reload_extension(self, ext: str) -> None:
+        super().reload_extension(self.extension_import(ext))
+
+    def loaded_extensions(self) -> List[str]:
+        return self.config.extensions
+
+    def available_extensions(self) -> List[str]:
+        for root, dirs, files in os.walk(self.extension_path('').resolve()):
+            return [d.replace('/', '.') for d in dirs if d not in self.config.extension_filters]
+
     def run(self):
-        self.load_extensions()
-        token = Secrets('discord_api_token')
+        token = secret('discord_api_token')
         if token:
             super(commands.Bot, self).run(token)
         else:
             log.fatal("Discord API token not set")
             sys.exit(1)
-
-    def load_extensions(self):
-        extensions = self.config.extensions
-        if not extensions:
-            return
-        for extension in extensions:
-            self.load_extension(extension)
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config', dest="config", help="Path to config file")
-    args = parser.parse_args()
-    config_path = args.config or os.getenv('BOT_CONFIG')
-
-    bot = DiscordBot(config_path=config_path)
-    bot.run()
-
-if __name__ == "__main__":
-    main()
 
