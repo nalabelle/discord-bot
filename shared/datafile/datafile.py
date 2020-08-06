@@ -29,8 +29,10 @@ class DataFile(Data):
             return datafile
 
     def save(self) -> None:
-        if not os.path.exists(os.path.dirname(self.path)):
-            os.mkdir(os.path.dirname(self.path))
+        save_dir = os.path.dirname(self.path)
+        if save_dir and save_dir != '':
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
         conf_string = self.to_yaml()
         with open(self.path, "w", encoding="UTF-8") as f:
             f.write(conf_string)
