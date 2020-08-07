@@ -8,3 +8,7 @@ run:
 		-v /run/secrets/discord_api_token:/run/secrets/discord_api_token:ro \
 		--rm -it discord-bot \
 		--config /app/data/local_config.yml
+
+push:
+	docker tag discord-bot:latest nalabelle/discord-bot:latest
+	docker push nalabelle/discord-bot:latest

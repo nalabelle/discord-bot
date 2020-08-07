@@ -17,6 +17,7 @@ class BotConfig(DataFile):
     extension_filters: List[str] = field(default_factory=lambda: ['.git'])
     extensions: List[str] = field(default_factory=list)
     log_level: str = os.getenv('LOG_LEVEL', 'ERROR')
+    discord_log_level: str = os.getenv('DISCORD_LOG_LEVEL', 'ERROR')
 
 class DiscordBot(commands.Bot):
     data_path = None
@@ -45,8 +46,8 @@ class DiscordBot(commands.Bot):
         self.config = BotConfig.from_yaml(path=path)
         if not os.path.exists(path):
             self.config.save()
-        logging_level = self.config.log_level.upper()
-        logging.getLogger().setLevel(logging_level)
+        logging.getLogger().setLevel(self.config.log_level.upper())
+        logging.getLogger('discord').setLevel(self.config.discord_log_level.upper())
 
     def load_extension(self, ext: str) -> None:
         super().load_extension(self.extension_import(ext))
