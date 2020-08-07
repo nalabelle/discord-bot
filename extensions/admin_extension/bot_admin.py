@@ -26,12 +26,15 @@ class ExtensionAdmin(commands.Cog):
     def available_extensions(self) -> List[str]:
         exts = []
         prefix = self.extension_import('') + "."
+        loaded_extensions = self.loaded_extensions()
         for child in self.extension_path('').iterdir():
             if str(child) in self.bot.config.extension_filters:
                 continue
             if child.is_dir():
                 if child.joinpath('__init__.py').exists():
-                    exts.append(str(child).replace('/','.').replace(prefix,''))
+                    ext_module = str(child).replace('/','.').replace(prefix,'')
+                    if ext_module not in loaded_extensions:
+                        exts.append(ext_module)
         return exts
 
     @commands.command()
