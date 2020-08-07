@@ -31,7 +31,12 @@ class DiscordBot(commands.Bot):
         prefix = commands.when_mentioned_or(prefix)
         super(commands.Bot, self).__init__(command_prefix=prefix)
         for extension in self.config.extensions:
-            super(commands.Bot, self).load_extension(extension)
+            try:
+                super(commands.Bot, self).load_extension(extension)
+            except Exception as e:
+                log.error("Could not load {}: {}".format(extension, e))
+            else:
+                log.info("Loaded extension: {}".format(extension))
 
     def configure(self, path: str):
         self.config = BotConfig.from_yaml(path=path)
