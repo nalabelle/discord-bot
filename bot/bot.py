@@ -64,10 +64,10 @@ class DiscordBot(commands.Bot):
     def reload_extension(self, ext: str) -> None:
         extension = self.extension_import(ext)
         log.debug('Reloading {} ({})'.format(ext, extension))
-        super().reload_extension(extension)
+        super(commands.Bot, self).reload_extension(extension)
 
     def loaded_extensions(self) -> List[str]:
-        return self.config.extensions
+        return [f.replace(self.extension_import(''),'') for f in super().extensions]
 
     def available_extensions(self) -> List[str]:
         for root, dirs, files in os.walk(self.extension_path('').resolve()):
