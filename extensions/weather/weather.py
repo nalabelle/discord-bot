@@ -1,22 +1,21 @@
-import discord
 from discord.ext import commands
-from services.weather import Weather as WeatherLib
-import dateutil.parser
-import dateutil.tz
+import dateutil
+from .service import WeatherService
 
 class Weather(commands.Cog):
     """ Weather commands """
 
     def __init__(self, bot):
         self.bot = bot
-        self.weather = WeatherLib()
+        self.weather = WeatherService()
 
     @commands.command(description='Give me a location, get the weather')
     async def weather(self, ctx, *, location : str):
         channel = ctx.message.channel
         async with channel.typing():
             weather_embed = self.get_weather(location)
-        await channel.send(embed=weather_embed)
+            if weather_embed:
+                await channel.send(embed=weather_embed)
 
     def get_weather(self, location):
         weather = self.weather.get_weather(location)
@@ -128,11 +127,4 @@ class Weather(commands.Cog):
                 )
 
         return weather_embed
-
-def setup(bot):
-    cog = Weather(bot)
-    bot.add_cog(cog)
-
-def teardown(bot):
-    bot.remove_cog('Weather')
 

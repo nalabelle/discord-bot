@@ -1,16 +1,57 @@
-import sys,os
 import geocoder
 import forecastio
 import datetime
+import logging
 from dateutil import tz
-from services.config import Secrets
+from dataclasses import dataclass, field
+from datafile import Data
+from file_secrets import secret
 
-class Weather:
+log = logging.getLogger()
+
+@dataclass
+class Temp(Data):
+    c: float
+    f: float
+
+@dataclass
+class TempRange(Data):
+    high: Temp
+    low: Temp
+
+@dataclass
+class Wind(Data):
+    bearing: str
+    kph: float
+    mph: float
+
+@dataclass
+class Alert(Data):
+    severity: str
+    title: str
+    uri: str
+ 
+@dataclass
+class WeatherData(Data):
+    location: str
+    utc_time: str
+    local_timezone: str
+    current_summary: str
+    current_icon: str
+    current_temp: Temp
+    feels_like: Temp
+    daily_temp: TempRange
+    humidity: int
+    precip: int
+    wind: Wind
+    alerts: field(default_factory=set)
+
+class WeatherService:
     """ Weather commands """
 
     def __init__(self):
-        self.forecast_api_key = Secrets('forecast_api_key')
-        self.google_api_key = Secrets('google_api_key')
+        self.forecast_api_key = secret('forecast_api_key')
+        self.google_api_key = secret('google_api_key')
         if not self.forecast_api_key:
             raise Error('Need forecast_api_key')
         if not self.google_api_key:
@@ -20,6 +61,7 @@ class Weather:
         loc = self.geocode_location(location_text)
         if loc is None:
             raise Error('Could not find location')
+        log.debug("got location {}".format(loc))
         forecast = self.get_forecast(loc.lat, loc.lng)
         cur = forecast.currently()
         day = forecast.daily().data[0]
@@ -28,7 +70,7 @@ class Weather:
         local_timezone = forecast.json['timezone']
         utc_dt = utc_time.isoformat()
 
-        weather = {
+        weather = WeatherData.from_dict({
                 "location": loc.address,
                 "utc_time": utc_dt,
                 "local_timezone": local_timezone,
@@ -59,27 +101,10 @@ class Weather:
                     "kph": self.sensible_speed(cur.windSpeed),
                     "mph": self.freedom_speed(cur.windSpeed)
                     },
-                "alerts": []
-                }
-
-        hourly_summary = forecast.minutely().summary
-        if hourly_summary is not None:
-            weather["hourly_summary"] = hourly_summary
-
-        daily_summary = forecast.hourly().summary
-        if daily_summary is not None:
-            weather["daily_summary"] = daily_summary
-
-        if len(forecast.alerts()) > 0:
-            for alert in forecast.alerts():
-                alert = {
-                        "severity": alert.severity.title(),
-                        "title": alert.title,
-                        "uri": alert.uri
-                        }
-                # forecast tends to give a bunch of completely duplicate warnings
-                if alert not in weather["alerts"]:
-                    weather["alerts"].append(alert)
+                "hourly_summary": forecast.minutely().summary,
+                "daily_summary": forecast.hourly().summary,
+                "alerts": set([Alert(severity=a.severity.title(),title=a.title,uri=a.uri) for a in forecast.alerts()])
+                })
         return weather
 
     def geocode_location(self, location_text):

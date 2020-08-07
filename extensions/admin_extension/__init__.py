@@ -5,5 +5,5 @@ def setup(bot):
     bot.add_cog(cog)
 
 def teardown(bot):
-    bot.remove_cog('BotAdmin')
+    bot.remove_cog('ExtensionAdmin')
 

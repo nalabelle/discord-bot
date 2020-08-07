@@ -9,11 +9,6 @@ class ExtensionAdmin(commands.Cog):
 
     @commands.command(hidden=True)
     @commands.is_owner()
-    async def get_config(self, ctx):
-        await ctx.message.channel.send('```{}```'.format(self.bot.config.to_yaml()))
-
-    @commands.command(hidden=True)
-    @commands.is_owner()
     async def load(self, ctx, *, extension : str):
         try:
             self.bot.load_extension(extension)
