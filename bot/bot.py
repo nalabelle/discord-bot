@@ -46,7 +46,7 @@ class DiscordBot(commands.Bot):
         if not os.path.exists(path):
             self.config.save()
         logging_level = self.config.log_level.upper()
-        log.setLevel(logging_level)
+        logging.getLogger().setLevel(logging_level)
 
     def load_extension(self, ext: str) -> None:
         super().load_extension(self.extension_import(ext))
