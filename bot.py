@@ -4,11 +4,9 @@ import glob
 import os
 import sys
 import logging
+from bot.bot import DiscordBot
 
 app_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__))))
-sys.path.append(os.path.join(app_path,'shared'))
-
-from bot.bot import DiscordBot
 
 logging.basicConfig()
 log = logging.getLogger('__main__')
