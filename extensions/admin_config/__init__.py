@@ -1,6 +1,5 @@
-from .config import ConfigReload
-
 def setup(bot):
+    from .config import ConfigReload
     bot.add_cog(ConfigReload(bot))
 
 def teardown(bot):

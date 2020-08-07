@@ -1,7 +1,7 @@
 import discord
 import asyncio
+from pathlib import Path
 from discord.ext import commands
-import custom_permissions
 from dataclasses import dataclass
 from datafile import DataFile
 
@@ -15,14 +15,15 @@ class Status(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.data = StatusData()
+        path = str(Path(self.bot.data_path, 'status.yml'))
+        self.data = StatusData().from_yaml(path)
 
     async def set_initial_status(self):
         function = getattr(self, self.data.action)
         await function(self.data.status)
 
     @commands.command(hidden=True)
-    @custom_permissions.is_owner_or_admin()
+    @commands.check_any(commands.is_owner(), commands.has_guild_permissions(manage_webhooks=True))
     async def status(self, ctx, action : str, *, status : str):
         self.data.action = action
         self.data.status = status
@@ -54,11 +55,4 @@ class Status(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.set_initial_status()
-
-def setup(bot):
-    cog = Status(bot)
-    bot.add_cog(cog)
-
-def teardown(bot):
-    bot.remove_cog('Status')
 

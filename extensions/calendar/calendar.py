@@ -1,14 +1,13 @@
 import discord
-import asyncio
 import logging
-import yaml
+from pathlib import Path
 from queue import PriorityQueue
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from discord.ext import commands, tasks
-from services.google_calendar import GoogleCalendar
-from services.config import Data
 import pyrfc3339 as rfc3339
+from .google_calendar import GoogleCalendar
+from datafile import Data,DataFile
 import dateutil.parser
 import dateutil.tz
 from dateutil.tz import tzutc
@@ -37,7 +36,7 @@ class Event(Data):
     end: datetime = None
 
 @dataclass
-class CalendarData(Data):
+class CalendarData(DataFile):
     summary_day: Optional[int] = None
     summary_hour: Optional[int] = None
     users: Dict[int, User] = field(default_factory=dict)
@@ -55,7 +54,8 @@ class Calendar(commands.Cog):
         self.bot = bot
         self.events = CalendarQueue()
         self.awaiting_user_auth = {}
-        self.data = CalendarData()
+        path = str(Path(self.bot.data_path, 'calendar.yml'))
+        self.data = CalendarData().from_yaml(path=path)
         self.collect_next_events()
         self.set_next_execution()
 
@@ -69,8 +69,8 @@ class Calendar(commands.Cog):
         if not self.events.empty():
             peek = self.events.queue[0]
             next_execution = min(next_execution, peek.start)
-        self.next_execution = next_execution
-        log.debug("Next Calendar Update: {}, Next Event: {}".format(rfc3339.generate(next_execution),
+            self.next_execution = next_execution
+            log.debug("Next Calendar Update: {}, Next Event: {}".format(rfc3339.generate(next_execution),
             rfc3339.generate(peek.start)))
 
     @tasks.loop()
@@ -205,13 +205,4 @@ class Calendar(commands.Cog):
             self.data.users[user.id] = user_data
             self.data.save()
         await channel.send('authed')
-
-def setup(bot):
-    cog = Calendar(bot)
-    bot.add_cog(cog)
-
-def teardown(bot):
-    cog = bot.get_cog('Calendar')
-    cog.tick.stop()
-    bot.remove_cog('Calendar')
 

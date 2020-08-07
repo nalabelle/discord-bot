@@ -1,1 +1,0 @@
-from .custom_permissions import is_owner_or_admin

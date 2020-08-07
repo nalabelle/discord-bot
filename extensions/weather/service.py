@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datafile import Data
 from file_secrets import secret
 
-log = logging.getLogger()
+log = logging.getLogger('weather.service')
 
 @dataclass
 class Temp(Data):
@@ -30,13 +30,15 @@ class Alert(Data):
     severity: str
     title: str
     uri: str
- 
+
 @dataclass
 class WeatherData(Data):
     location: str
     utc_time: str
     local_timezone: str
     current_summary: str
+    hourly_summary: str
+    daily_summary: str
     current_icon: str
     current_temp: Temp
     feels_like: Temp
@@ -105,6 +107,7 @@ class WeatherService:
                 "daily_summary": forecast.hourly().summary,
                 "alerts": set([Alert(severity=a.severity.title(),title=a.title,uri=a.uri) for a in forecast.alerts()])
                 })
+        log.warn(weather.to_yaml())
         return weather
 
     def geocode_location(self, location_text):

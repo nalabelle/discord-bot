@@ -2,12 +2,12 @@ from dateutil import tz
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from services.config import Secrets
 from googleapiclient.discovery import build
 import pickle
 import datetime
 import os.path
 import sys,os
+from file_secrets import secret
 
 SCOPES = [
         'https://www.googleapis.com/auth/calendar.readonly',
@@ -44,8 +44,8 @@ class GoogleCalendar:
         return self.calendar.events().list(calendarId=self.calendar_id, **kwargs).execute()
 
     def client_config(self):
-        client_id = Secrets('google_client_id')
-        client_secret = Secrets('google_client_secret')
+        client_id = secret('google_client_id')
+        client_secret = secret('google_client_secret')
         config = {
                 "installed": {
                         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -58,8 +58,8 @@ class GoogleCalendar:
         return config
 
     def credentials(self):
-        client_id = Secrets('google_client_id')
-        client_secret = Secrets('google_client_secret')
+        client_id = secret('google_client_id')
+        client_secret = secret('google_client_secret')
         creds = Credentials(
             self.access_token,
             refresh_token=self.refresh_token,

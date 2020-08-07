@@ -1,3 +1,4 @@
+import sys
 from discord.ext import commands
 
 class ConfigReload(commands.Cog):
@@ -15,3 +16,8 @@ class ConfigReload(commands.Cog):
         self.bot.config.__dict__.update(self.bot.config.__class__.from_yaml(path=self.bot.config.path).__dict__)
         await ctx.message.channel.send('Config reloaded: ```{}```'.format(self.bot.config.to_yaml()))
 
+    @commands.command()
+    @commands.is_owner()
+    async def exit(self, ctx):
+        await ctx.message.channel.send('Logging out, bye!')
+        sys.exit(0)

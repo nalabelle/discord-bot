@@ -1,0 +1,5 @@
+# pyproject.toml
+[tool.pytest.ini_options]
+log_level="debug"
+log_cli=true
+cache_dir="/tmp/pytest_cache"
