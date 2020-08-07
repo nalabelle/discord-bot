@@ -60,3 +60,23 @@ $ docker run \
   --rm -it discord-bot
 ~~~
 
+## Example Config
+I checked out [discord-bot-extensions](https://github.com/nalabelle/discord-bot-extensions) into
+`data/extensions`, and then I let the extensions manage my config as follows
+
+~~~
+command_prefix: '!'
+discord_log_level: ERROR
+extension_filters:
+- .git
+extensions:
+- data.extensions._dependencies
+- data.extensions.admin_config
+- data.extensions.admin_extension
+- data.extensions.status
+- data.extensions.weather
+log_level: debug
+~~~
+
+
+
