@@ -63,7 +63,7 @@ class DiscordBot(commands.Bot):
 
     def reload_extension(self, ext: str) -> None:
         extension = self.extension_import(ext)
-        log.debug('Reloading {} ({})'.format(ext), extension)
+        log.debug('Reloading {} ({})'.format(ext, extension))
         super().reload_extension(extension)
 
     def loaded_extensions(self) -> List[str]:
