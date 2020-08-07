@@ -7,7 +7,6 @@ WORKDIR /app
 # install app
 RUN \
  pip install --no-cache-dir -U -r /app/requirements.txt && \
- pip install -e shared/*/
  rm -rf \
    /root/.cache \
    /tmp/*
