@@ -72,6 +72,8 @@ class WeatherService:
         local_timezone = forecast.json['timezone']
         utc_dt = utc_time.isoformat()
 
+        alerts = [Alert(severity=a.severity.title(),title=a.title,uri=a.uri) for a in forecast.alerts()]
+        alerts = set(alerts)
         weather = WeatherData.from_dict({
                 "location": loc.address,
                 "utc_time": utc_dt,
@@ -105,7 +107,7 @@ class WeatherService:
                     },
                 "hourly_summary": forecast.minutely().summary,
                 "daily_summary": forecast.hourly().summary,
-                "alerts": set([Alert(severity=a.severity.title(),title=a.title,uri=a.uri) for a in forecast.alerts()])
+                "alerts": alerts
                 })
         log.warn(weather.to_yaml())
         return weather
