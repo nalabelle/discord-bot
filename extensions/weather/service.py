@@ -31,6 +31,9 @@ class Alert(Data):
     title: str
     uri: str
 
+    def __hash__(self):
+        return hash((self.title, self.severity, self.uri))
+
 @dataclass
 class WeatherData(Data):
     location: str
@@ -65,6 +68,9 @@ class WeatherService:
             raise Error('Could not find location')
         log.debug("got location {}".format(loc))
         forecast = self.get_forecast(loc.lat, loc.lng)
+        return self.forecast_to_object(loc.address, forecast)
+
+    def forecast_to_object(self, location, forecast):
         cur = forecast.currently()
         day = forecast.daily().data[0]
 
@@ -75,7 +81,7 @@ class WeatherService:
         alerts = [Alert(severity=a.severity.title(),title=a.title,uri=a.uri) for a in forecast.alerts()]
         alerts = set(alerts)
         weather = WeatherData.from_dict({
-                "location": loc.address,
+                "location": location,
                 "utc_time": utc_dt,
                 "local_timezone": local_timezone,
                 "current_summary": cur.summary,
@@ -109,7 +115,6 @@ class WeatherService:
                 "daily_summary": forecast.hourly().summary,
                 "alerts": alerts
                 })
-        log.warn(weather.to_yaml())
         return weather
 
     def geocode_location(self, location_text):

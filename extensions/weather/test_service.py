@@ -1,11 +1,22 @@
-from .service import WeatherService
+import json
+from .service import WeatherService, Alert
+from forecastio.models import Forecast
+from geocoder.google import GoogleResult
 weather_service = WeatherService()
 
-def test_geocode():
-    o = weather_service.geocode_location('90210')
-    print(o)
+testdata = None
+f = open("weather/api_test_response.txt", "r")
+testdata = f.read()
+f.close()
+
+test_forecast = Forecast(json.loads(testdata), None, None)
+
+f = open("weather/api_geocode_test.txt", "r")
+testdata = f.read()
+test_geocode = GoogleResult(json.loads(testdata)["results"][0])
+
 
 def test_weather():
-    o = weather_service.get_weather('90210')
-    print(o)
-    assert o is not None, "Weather Service Works"
+    weather = weather_service.forecast_to_object(test_geocode.address, test_forecast)
+    assert weather is not None, "Weather Service Works"
+
