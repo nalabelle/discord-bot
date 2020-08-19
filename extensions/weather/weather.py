@@ -37,7 +37,7 @@ class Weather(commands.Cog):
 
         temp_high_low_field = '{:,g}°C ({:,g}°F)/{:,g}°C ({:,g}°F)'.format(
                 weather.daily_temp.high.c, weather.daily_temp.high.f,
-                weather.daily_temp.low.c, weather.daily_temp.low.c)
+                weather.daily_temp.low.c, weather.daily_temp.low.f)
 
         humidity_field = '{:,g}%'.format(weather.humidity)
 
