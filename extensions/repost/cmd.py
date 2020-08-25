@@ -34,15 +34,12 @@ class RepostCommand(commands.Cog, name="Repost"):
     async def on_message(self, message: discord.Message):
         r = self.listen_channels.get(message.channel.id)
         if r is not None:
-            cache_channels = list()
             for channel in r:
                 content = message.content
                 content = content + '\n```{}```'.format(message.jump_url)
                 chan = discord.utils.get(self.bot.get_all_channels(),
                         id=r.dest_channel)
                 chan.send(content)
-                cache_channels.append(channel)
-            self.listen_channels[message.channel.id] = cache_channels
 
 def setup(bot):
     bot.add_cog(RepostCommand(bot))
