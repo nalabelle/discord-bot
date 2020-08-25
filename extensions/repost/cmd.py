@@ -21,13 +21,13 @@ class RepostCommand(commands.Cog, name=="Repost"):
     @commands.has_guild_permissions(manage_webhooks=True)
     async def repost(self, ctx, source: discord.TextChannel, dest: discord.TextChannel):
         r = Repost(source_channel = source.id, dest_channel = dest.id)
-        if r not in self.data.subscriptions:
+        if r in self.data.subscriptions:
+            await ctx.message.channel.send('Already subscribed'.format(source, dest)
+        else:
             self.data.subscriptions.append(r)
             self.data.save()
             self.load_channels()
             await ctx.message.channel.send('Subscribed {} to {}'.format(source, dest)
-        else:
-            await ctx.message.channel.send('Already subscribed'.format(source, dest)
 
     async def on_message(self, message: discord.Message):
         r = self.listen_channels.get(message.channel.id)
