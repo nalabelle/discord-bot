@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from services.giphy import Giphy as GiphyLib
+from .services import Giphy as GiphyLib
 
 class Giphy(commands.Cog):
     """ Giphy commands """
