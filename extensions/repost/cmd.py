@@ -44,6 +44,8 @@ class RepostCommand(commands.Cog, name="Repost"):
         if r is not None:
             for channel in r:
                 log.debug("Posting to channel {}".format(channel))
+                if len(message.embeds) > 0:
+                    log.debug("Message has embed {}".format(message.embeds))
                 embed = discord.Embed.from_dict({
                     "description": message.content,
                     "url": message.jump_url
@@ -53,6 +55,8 @@ class RepostCommand(commands.Cog, name="Repost"):
                 chan = discord.utils.get(self.bot.get_all_channels(),
                         id=channel)
                 await chan.send(embed=embed)
+                for embed_copy in message.embeds:
+                    await chan.send(embed=embed_copy)
 
 def setup(bot):
     bot.add_cog(RepostCommand(bot))
