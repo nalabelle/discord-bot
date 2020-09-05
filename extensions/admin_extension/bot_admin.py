@@ -43,6 +43,9 @@ class ExtensionAdmin(commands.Cog):
         e = self.extension_import(extension)
         try:
             self.bot.load_extension(e)
+            if e not in self.bot.config.extensions:
+                self.bot.config.extensions.append(e)
+                self.bot.config.save()
             await ctx.message.channel.send('Extension loaded: {}'.format(extension))
         except ExtensionNotFound:
             await ctx.message.channel.send('Extension not found: {}'.format(extension))
@@ -52,9 +55,6 @@ class ExtensionAdmin(commands.Cog):
             await ctx.message.channel.send('Exension has no setup function: {}'.format(extension))
         except ExtensionFailed as e:
             await ctx.message.channel.send('Extension failed: {}, {}'.format(extension, e))
-        if e not in self.bot.config.extensions:
-            self.bot.config.extensions.append(e)
-            self.bot.config.save()
 
     @commands.command()
     @commands.is_owner()
