@@ -34,7 +34,7 @@ class Dependencies(commands.Cog):
         self.bot = bot
 
     async def upgrade(self, channel):
-        o = install_deps
+        o = install_deps()
         await channel.send('Deps updated: ```{}```'.format(o))
 
     @commands.command(hidden=True)
