@@ -55,6 +55,7 @@ class ExtensionAdmin(commands.Cog):
             await ctx.message.channel.send('Exension has no setup function: {}'.format(extension))
         except ExtensionFailed as e:
             await ctx.message.channel.send('Extension failed: {}, {}'.format(extension, e))
+            raise e
 
     @commands.command()
     @commands.is_owner()
