@@ -1,10 +1,9 @@
-FROM python:3-slim-buster
+FROM python:3-buster
 ENV PYTHONIOENCODING="UTF-8"
 
 COPY / /app/
 WORKDIR /app
 
-# install app
 RUN \
  pip install --no-cache-dir -U -r /app/requirements.txt && \
  rm -rf \
