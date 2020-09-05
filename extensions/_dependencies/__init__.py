@@ -15,7 +15,8 @@ def install_deps():
         "--quiet",
         "--cache-dir", cache_dir,
         "--upgrade",
-        "-t", packages, "-r", requirements]
+        "-t", packages,
+        "-r", requirements]
     log.info("running {}".format(" ".join(install_cmd)))
     output = subprocess.check_output(install_cmd, stderr=subprocess.STDOUT)
     log.info(output)

@@ -1,4 +1,5 @@
 import logging
+import traceback
 from discord.ext import commands
 
 log = logging.getLogger('ErrorsCog')
@@ -15,7 +16,9 @@ class Errors(commands.Cog):
         elif isinstance(error, commands.CommandNotFound):
             return
         else:
-            await ctx.channel.send('I broke! 😭 ```{}```'.format(str(error)))
+            await ctx.channel.send('I broke! 😭 ```{}\n{}```'.format(str(error),
+                "".join(traceback.format_tb(error.__traceback__))))
+            traceback.print_tb(error.__traceback__)
             # log these so we can catch them
             raise error
 
