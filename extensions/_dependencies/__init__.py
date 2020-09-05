@@ -18,7 +18,11 @@ def install_deps():
         "-t", packages,
         "-r", requirements]
     log.info("running {}".format(" ".join(install_cmd)))
-    output = subprocess.check_output(install_cmd, stderr=subprocess.STDOUT)
+    try:
+        output = subprocess.check_output(install_cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        log.error("Failed to run command: {}".format(e.output))
+        raise e
     log.info(output)
     if packages not in sys.path:
         sys.path.append(packages)
