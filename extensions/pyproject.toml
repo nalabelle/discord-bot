@@ -3,3 +3,30 @@
 log_level="debug"
 log_cli=true
 cache_dir="/tmp/pytest_cache"
+
+[tool.poetry]
+name = "discord-bot-extensions"
+version = "0.1.0"
+description = "Extensions for https://github.com/nalabelle/discord-bot"
+authors = ["nalabelle <nalabelle@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+"discord.py" = ">=1.3.3"
+geocoder = ">=1.38.1"
+giphypop = ">=0.3"
+google-api-python-client = ">=1.9.3"
+google-auth-httplib2 = ">=0.0.3"
+google-auth-oauthlib = ">=0.4.1"
+python-dateutil = ">=2.8.0"
+python-forecastio = ">=1.3.5"
+pyRFC3339 = ">=1.1"
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
