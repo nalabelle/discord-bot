@@ -2,7 +2,7 @@
 Extensions for https://github.com/nalabelle/discord-bot
 
 # Installation
-Clone this repo into your discord-bot `/data` path, then load the basic extensions into config:
+Clone this repo into your discord-bot `/data/extensions` path, then load the basic extensions into config:
 ~~~
 extensions:
   - data.extensions._dependencies
