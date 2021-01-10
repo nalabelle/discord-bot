@@ -6,6 +6,7 @@ class MissingSecretError(Exception):
 class FileSecrets:
     _instance = None
     paths = [
+        "/secrets",
         "/run/secrets",
         "/var/run/secrets",
         ]
