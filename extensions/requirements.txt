@@ -7,6 +7,7 @@ google-auth-oauthlib>=0.4.1
 python-dateutil>=2.8.0
 python-forecastio>=1.3.5
 pyRFC3339>=1.1
+git+https://github.com/Fiona1729/py-rolldice@cba5e3a0ba01ad10d856ab10526e996c6d0c16fd
 git+https://github.com/nalabelle/discord-bot@master#egg=dataclasses-yaml&subdirectory=shared/dataclasses_yaml
 git+https://github.com/nalabelle/discord-bot@master#egg=datafile&subdirectory=shared/datafile
 git+https://github.com/nalabelle/discord-bot@master#egg=file-secrets&subdirectory=shared/file_secrets
