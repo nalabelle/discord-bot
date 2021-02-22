@@ -49,6 +49,8 @@ class RepostCommand(commands.Cog, name="Repost"):
         if self.bot.user.id == message.author.id:
             return True
         repost_channels = self.listen_channels.get(message.channel.id)
+        if not repost_channels:
+            return
         for channel in repost_channels:
             log.debug("Posting to channel %s", channel)
             if len(message.embeds) > 0:
@@ -72,9 +74,8 @@ class RepostCommand(commands.Cog, name="Repost"):
             return True
 
         repost_channels = self.listen_channels.get(message.channel.id)
-        if not len(repost_channels):
-            return True
-
+        if not repost_channels:
+            return
         search_interval = datetime.timedelta(hours=1)
         created_at = message.created_at
         search_start = created_at - search_interval
