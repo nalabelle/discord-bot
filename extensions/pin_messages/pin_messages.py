@@ -18,9 +18,11 @@ class PinMessages(commands.Cog):
         if str(emoji) == '📌':
             if message.pinned:
                 return
-            users = await reaction.users().flatten()
-            user_list = ", ".join([x.display_name for x in users])
-            reason = "📌 emoji added by {}".format(user_list)
+            added_by = ""
+            user = reaction.member
+            if user:
+                added_by = "added by {}".format(user)
+            reason = "📌 emoji {}".format(added_by).strip()
             await message.pin(reason=reason)
 
     @commands.Cog.listener()
