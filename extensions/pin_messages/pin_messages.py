@@ -20,7 +20,7 @@ class PinMessages(commands.Cog):
             if message.pinned:
                 return
             reason = "📌 emoji added by {}".format(user)
-            message.pin(reason=reason)
+            await message.pin(reason=reason)
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, reaction):
@@ -39,7 +39,7 @@ class PinMessages(commands.Cog):
             if '📌' in reactions:
                 return
             reason = "📌 emoji removed by {}".format(user)
-            message.unpin(reason=reason)
+            await message.unpin(reason=reason)
 
 def setup(bot):
     cog = PinMessages(bot)
