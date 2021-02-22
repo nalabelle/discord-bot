@@ -12,7 +12,7 @@ class PinMessages(commands.Cog):
             return
         channel = self.bot.get_channel(int(reaction.channel_id))
         message = await channel.fetch_message(reaction.message_id)
-        user = await channel.fetch_user(reaction.user_id)
+        user = channel.guild.get_member(reaction.user_id)
         emoji = reaction.emoji
         if emoji is None:
             return
@@ -28,7 +28,7 @@ class PinMessages(commands.Cog):
             return
         channel = self.bot.get_channel(int(reaction.channel_id))
         message = await channel.fetch_message(reaction.message_id)
-        user = await channel.fetch_user(reaction.user_id)
+        user = channel.guild.get_member(reaction.user_id)
         emoji = reaction.emoji
         if emoji is None:
             return
