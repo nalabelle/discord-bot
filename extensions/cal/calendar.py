@@ -17,7 +17,7 @@ import pyrfc3339 as rfc3339
 from .google_calendar import GoogleCalendar
 log = logging.getLogger('CalendarCog')
 
-@dataclass
+@dataclass(order=True)
 class Subscription(Data):
     """Subscription Storage Dataclass"""
     calendar_id: str
@@ -102,29 +102,22 @@ class Calendar(commands.Cog):
         log.debug("Starting tick loop")
 
     def dtf(self, d_t : datetime) -> str:
-        return d_t.strftime('%a, %H:%M')
+        return '{dt:%a}, {dt.day} {dt:%b} {dt:%H}:{dt:%M}'.format(dt=d_t)
 
     def event_to_embed(self, event) -> discord.Embed:
         event_tz = tz.gettz(event.calendar_tz)
-        formatted_start = self.dtf(event.start.astimezone(event_tz))
-        formatted_end = self.dtf(event.end.astimezone(event_tz))
-        return discord.Embed.from_dict({
+        embed = discord.Embed.from_dict({
             "title": event.title,
             "description": event.description,
-            "timestamp": event.start.timestamp(),
-            "fields": [
-                {
-                    "name": 'Start',
-                    "value": formatted_start,
-                    "inline": True
-                },
-                {
-                    "name": 'End',
-                    "value": formatted_end,
-                    "inline": True
-                },
-            ]
-        })
+            "timestamp": event.start.timestamp()
+            })
+        if event.start:
+            time = self.dtf(event.start.astimezone(event_tz))
+            embed.add_field(name="Start", value=time, inline=True)
+        if event.end:
+            time = self.dtf(event.end.astimezone(event_tz))
+            embed.add_field(name="End", value=time, inline=True)
+        return embed
 
     async def chime(self):
         now = datetime.utcnow().replace(tzinfo=tzutc())
@@ -158,48 +151,60 @@ class Calendar(commands.Cog):
                 log.debug("Skipping event for other channel")
                 continue
             event_tz = tz.gettz(event.calendar_tz)
-            period = "{} to {}".format(self.dtf(event.start.astimezone(event_tz)),
-                self.dtf(event.end.astimezone(event_tz)))
+            period = "{}".format(self.dtf(event.start.astimezone(event_tz)))
+            if event.end:
+                if event.end == event.start + timedelta(days=1):
+                    # All day event, one day. Let's assume this event ends EOD
+                    event_end = event.end - timedelta(seconds=1)
+                    period = "{}".format(self.dtf(event_end.astimezone(event_tz)))
+                else:
+                    period = "{} to {}".format(self.dtf(event.start.astimezone(event_tz)),
+                        self.dtf(event.end.astimezone(event_tz)))
             embed = embeds.setdefault(event.subscription.channel_id, embed.copy())
             embed.add_field(name=event.title,value=period, inline=True)
         return embeds
 
     def collect_next_events(self):
-        seen = []
         while not self.events.empty():
             self.events.get()
         for subscription in self.data.subscriptions:
-            if subscription.calendar_id not in seen:
-                seen.append(subscription.calendar_id)
-                calendar_user = self.data.users.get(subscription.user_id)
-                calendar = GoogleCalendar(calendar_id=subscription.calendar_id,
-                        refresh_token=calendar_user.refresh_token)
-                time_min = rfc3339.generate(datetime.utcnow().replace(tzinfo=tzutc()))
-                time_max = rfc3339.generate(
-                        (datetime.utcnow() + timedelta(days=7)).replace(tzinfo=tzutc())
-                        )
-                calendar_items = calendar.list_events(orderBy="startTime", timeMin=time_min,
-                        timeMax=time_max,singleEvents=True)["items"]
-                for item in calendar_items:
-                    start_time = None
-                    calendar_tz = item["start"].get("timeZone", calendar.get_info()["timeZone"])
-                    if "dateTime" in item["start"]:
-                        start_time = rfc3339.parse(item["start"]["dateTime"])
+            calendar_user = self.data.users.get(subscription.user_id)
+            calendar = GoogleCalendar(calendar_id=subscription.calendar_id,
+                    refresh_token=calendar_user.refresh_token)
+            now = datetime.utcnow().replace(tzinfo=tzutc())
+            time_min = rfc3339.generate(now)
+            time_max = rfc3339.generate(now + timedelta(days=7))
+            calendar_items = calendar.list_events(orderBy="startTime", timeMin=time_min,
+                    timeMax=time_max,singleEvents=True)["items"]
+            for item in calendar_items:
+                start_time = None
+                end_time = None
+                calendar_tz = item["start"].get("timeZone", calendar.get_info()["timeZone"])
+                if "dateTime" in item["start"]:
+                    start_time = rfc3339.parse(item["start"]["dateTime"])
+                else:
+                    start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d') \
+                        .replace(hour=0,minute=0,second=0,
+                                tzinfo=tz.gettz(calendar_tz))
+                start_time = start_time.astimezone(tzutc())
+                if item["end"]:
+                    if "dateTime" in item["end"]:
+                        end_time = rfc3339.parse(item["end"]["dateTime"])
                     else:
-                        start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d') \
-                            .replace(hour=0,minute=0,second=0,tzinfo=tzutc())
-                    if datetime.utcnow().replace(tzinfo=tzutc()) >= start_time:
-                        continue
-                    end_time = None
-                    if item["end"]:
-                        if "dateTime" in item["end"]:
-                            end_time = rfc3339.parse(item["end"]["dateTime"])
-                    title = item["summary"]
-                    description = item.get("description")
-                    event = Event(start=start_time, end=end_time, title=title,
-                            description=description, subscription=subscription,
-                            calendar_tz=calendar_tz)
-                    self.events.put(event)
+                        end_time = datetime.strptime(item["end"]["date"], '%Y-%m-%d') \
+                            .replace(hour=0,minute=0,second=0,
+                                    tzinfo=tz.gettz(calendar_tz))
+                    end_time = end_time.astimezone(tzutc())
+                title = item["summary"]
+                description = item.get("description")
+                event = Event(
+                        start=start_time,
+                        end=end_time,
+                        title=title,
+                        description=description,
+                        subscription=subscription,
+                        calendar_tz=calendar_tz)
+                self.events.put(event)
 
     @commands.group()
     async def cal(self, ctx):
@@ -302,6 +307,31 @@ class Calendar(commands.Cog):
             self.data.subscriptions.append(subscription)
             self.data.save()
             await channel.send("Subscribed {} to {}".format(sub_chan, info['summary']))
+
+    @cal.command()
+    async def unsubscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
+        """
+        Unsubscribes a Google Calendar from a Discord Channel
+        arguments:
+          Google Calendar ID
+          Discord Channel
+        """
+        channel = ctx.message.channel
+        user = ctx.message.author
+        if not sub_chan:
+            await channel.send("Could not find channel {}".format(channel))
+            return
+        if user.id not in self.data.users:
+            await channel.send("Could not find user")
+            return
+        subscription = Subscription(calendar_id=calendar_id, user_id=user.id,
+                channel_id=sub_chan.id, guild_id=channel.guild.id)
+        if subscription not in self.data.subscriptions:
+            await channel.send("Could not find subscription")
+            return
+        self.data.subscriptions.remove(subscription)
+        self.data.save()
+        await channel.send("Unsubscribed {} from {}".format(sub_chan, calendar_id))
 
     @cal.command()
     async def auth_token(self, ctx, *, auth_token : str):
