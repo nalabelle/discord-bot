@@ -1,18 +1,19 @@
-import discord
+"""
+Cog for Calendar Command
+"""
+
 import logging
 from pathlib import Path
 from queue import PriorityQueue
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
+from datetime import datetime, timedelta
+from datafile import Data,DataFile
+from dateutil.tz import tzutc
+import discord
 from discord.ext import commands, tasks
 import pyrfc3339 as rfc3339
 from .google_calendar import GoogleCalendar
-from datafile import Data,DataFile
-import dateutil.parser
-import dateutil.tz
-from dateutil.tz import tzutc
-from datetime import time, datetime, timedelta
-
 log = logging.getLogger('CalendarCog')
 
 @dataclass
@@ -52,12 +53,11 @@ class Calendar(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.next_execution = None
         self.events = CalendarQueue()
         self.awaiting_user_auth = {}
         path = str(Path(self.bot.data_path, 'calendar.yml'))
         self.data = CalendarData().from_yaml(path=path)
-        self.collect_next_events()
-        self.set_next_execution()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -65,19 +65,21 @@ class Calendar(commands.Cog):
 
     def set_next_execution(self):
         #execute once an hour, or sooner if we have an event coming up
-        next_execution = datetime.utcnow().replace(tzinfo=tzutc(),minute=0,second=0)+timedelta(hours=1)
+        next_execution = datetime.utcnow().replace(tzinfo=tzutc(),minute=0,second=0) \
+            + timedelta(hours=1)
         if not self.events.empty():
             peek = self.events.queue[0]
             next_execution = min(next_execution, peek.start)
-            self.next_execution = next_execution
-            log.debug("Next Calendar Update: {}, Next Event: {}".format(rfc3339.generate(next_execution),
-            rfc3339.generate(peek.start)))
+            log.debug("Next Event: %s", rfc3339.generate(peek.start))
+        self.next_execution = next_execution
+        log.debug("Next Calendar Update: %s", rfc3339.generate(next_execution))
 
     @tasks.loop()
     async def tick(self):
-        #block until it's time to chime
-        await discord.utils.sleep_until(self.next_execution)
-        await self.chime()
+        if self.next_execution is not None:
+            #block until it's time to chime
+            await discord.utils.sleep_until(self.next_execution)
+            await self.chime()
         self.collect_next_events()
         self.set_next_execution()
 
@@ -106,7 +108,8 @@ class Calendar(commands.Cog):
             while not self.events.empty():
                 event = self.events.get()
                 temp.append(event)
-                message = message + "\n- {} on {}".format(event.title, event.start.strftime('%a at %H:%M'))
+                message = message + "\n- {} on {}".format(event.title,
+                        event.start.strftime('%a at %H:%M'))
             for event in temp:
                 self.events.put(event)
             out_chan = discord.utils.get(self.bot.get_all_channels(),
@@ -134,7 +137,8 @@ class Calendar(commands.Cog):
                     if "dateTime" in item["start"]:
                         start_time = rfc3339.parse(item["start"]["dateTime"])
                     else:
-                        start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d').replace(hour=0,minute=0,second=0,tzinfo=tzutc())
+                        start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d') \
+                            .replace(hour=0,minute=0,second=0,tzinfo=tzutc())
                     if datetime.utcnow().replace(tzinfo=tzutc()) >= start_time:
                         continue
                     end_time = None
@@ -148,8 +152,28 @@ class Calendar(commands.Cog):
                     self.events.put(event)
 
     @commands.command()
-    async def summary(self, ctx, summary_day : int, summary_hour : int):
-        channel = ctx.message.channel
+    @commands.is_owner()
+    async def debug(self, ctx):
+        """
+        Outputs debug information
+        """
+        message = """```
+            Next Execution: {}
+            Events in queue: {}
+            ```""".format(
+            rfc3339.generate(self.next_execution),
+            len(self.events)
+            )
+        await ctx.channel.send(message)
+
+    @commands.command()
+    async def set_summary(self, ctx, summary_day : int, summary_hour : int):
+        """
+        Sets the date and time for the bot to put a summary in the the channel
+        arguments:
+          Day of the week (0-6)
+          Hour of the day (0-23)
+        """
         errors = []
         if not 0 <= summary_day <= 6:
             errors.append("summary day out of range")
@@ -165,10 +189,16 @@ class Calendar(commands.Cog):
 
     @commands.command()
     async def subscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
+        """
+        Subscribes a Google Calendar to a Discord Channel
+        arguments:
+          Google Calendar ID
+          Discord Channel
+        """
         channel = ctx.message.channel
         user = ctx.message.author
         if not sub_chan:
-            await channel.send("Could not find channel {}".format(chan))
+            await channel.send("Could not find channel {}".format(channel))
             return
         if user.id not in self.data.users:
             calendar = GoogleCalendar()
@@ -193,6 +223,7 @@ class Calendar(commands.Cog):
 
     @commands.command()
     async def auth_token(self, ctx, *, auth_token : str):
+        """Submits an auth_token from Google, used while linking a Calendar"""
         channel = ctx.message.channel
         user = ctx.message.author
         awaiting_auth = self.awaiting_user_auth.get(user.id)
@@ -205,4 +236,3 @@ class Calendar(commands.Cog):
             self.data.users[user.id] = user_data
             self.data.save()
         await channel.send('authed')
-
