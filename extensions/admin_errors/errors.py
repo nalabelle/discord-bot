@@ -1,3 +1,7 @@
+"""
+Error Handling Cog
+"""
+
 import logging
 import traceback
 from discord.ext import commands
@@ -16,10 +20,7 @@ class Errors(commands.Cog):
         elif isinstance(error, commands.CommandNotFound):
             return
         else:
-            await ctx.channel.send('I broke! 😭 ```{}\n{}```'.format(str(error),
-                "".join(traceback.format_tb(error.__traceback__))))
+            await ctx.channel.send('I broke! 😭 ```{}```'.format(str(error)))
             traceback.print_tb(error.__traceback__)
             # log these so we can catch them
             raise error
-
-

@@ -6,6 +6,5 @@ def setup(bot):
 
 def teardown(bot):
     cog = bot.get_cog('Calendar')
-    cog.tick.stop()
+    cog.tick.cancel()
     bot.remove_cog('Calendar')
-
