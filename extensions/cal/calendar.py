@@ -5,7 +5,7 @@ Cog for Calendar Command
 import logging
 from pathlib import Path
 from queue import PriorityQueue
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from datafile import Data,DataFile
@@ -14,7 +14,7 @@ from dateutil.tz import tzutc
 import discord
 from discord.ext import commands, tasks
 import pyrfc3339 as rfc3339
-from .google_calendar import GoogleCalendar
+from .google_calendar import GoogleCalendar, CalendarEvent
 log = logging.getLogger('CalendarCog')
 
 @dataclass(order=True)
@@ -25,21 +25,26 @@ class Subscription(Data):
     channel_id: int
     guild_id: int
 
+    def events(self, refresh_token):
+        calendar = GoogleCalendar(calendar_id=self.calendar_id, refresh_token=refresh_token)
+        now = datetime.utcnow().replace(tzinfo=tzutc())
+        return [Event.from_calendar_event(x, subscription=self) for x in
+                calendar.events(time_min=now, time_max=(now + timedelta(days=7)))]
+
 @dataclass
 class User(Data):
     """User Storage Dataclass"""
     user_id: int
     refresh_token: str = None
 
-@dataclass(order=True)
-class Event(Data):
+@dataclass
+class Event(CalendarEvent,Data):
     """Event Storage Dataclass"""
-    start: datetime
-    calendar_tz: str
-    title: str
-    description: str
-    subscription: Subscription
-    end: datetime = None
+    subscription: Subscription = None
+
+    @classmethod
+    def from_calendar_event(cls, event : CalendarEvent, **kwargs):
+        return cls(**asdict(event), **kwargs)
 
 @dataclass
 class CalendarData(DataFile):
@@ -48,6 +53,12 @@ class CalendarData(DataFile):
     summary_hour: Optional[int] = None
     users: Dict[int, User] = field(default_factory=dict)
     subscriptions: List[Subscription] = field(default_factory=list)
+
+@dataclass(order=True)
+class CalendarQueueItem:
+    """Sets Calendar Queue Priority"""
+    time: datetime
+    item: Event = field(compare=False)
 
 class CalendarQueue(PriorityQueue):
     """Priority Queue for holding calendar events in chronological order"""
@@ -67,8 +78,6 @@ class Calendar(commands.Cog):
         self.awaiting_user_auth = {}
         path = str(Path(self.bot.data_path, 'calendar.yml'))
         self.data = CalendarData().from_yaml(path=path)
-        self.collect_next_events()
-        self.set_next_execution()
         # pylint: disable=no-member
         self.tick.start()
 
@@ -78,8 +87,8 @@ class Calendar(commands.Cog):
             + timedelta(hours=1)
         if not self.events.empty():
             peek = self.events.queue[0]
-            next_execution = min(next_execution, peek.start)
-            log.debug("Next Event: %s", rfc3339.generate(peek.start))
+            next_execution = min(next_execution, peek.time)
+            log.debug("Next Reminder: %s", rfc3339.generate(peek.time))
         self.next_execution = next_execution
         log.debug("Next Calendar Update: %s", rfc3339.generate(next_execution))
 
@@ -90,7 +99,7 @@ class Calendar(commands.Cog):
             #block until it's time to chime
             log.debug("Waiting until %s", rfc3339.generate(self.next_execution))
             await discord.utils.sleep_until(self.next_execution)
-        await self.chime()
+            await self.chime()
         self.collect_next_events()
         self.set_next_execution()
         log.debug("Tick end")
@@ -123,8 +132,10 @@ class Calendar(commands.Cog):
         now = datetime.utcnow().replace(tzinfo=tzutc())
         while not self.events.empty():
             peek = self.events.queue[0]
-            if now >= peek.start:
-                event = self.events.get()
+            next_reminder = min(peek.time)
+            if now >= next_reminder:
+                event = self.events.get().item
+                event.reminders.remove(next_reminder)
                 out_chan = discord.utils.get(self.bot.get_all_channels(),
                         id=event.subscription.channel_id)
                 await out_chan.send(embed=self.event_to_embed(event))
@@ -145,66 +156,35 @@ class Calendar(commands.Cog):
         embeds = dict()
         embed = discord.Embed(title="**Events This Week**")
         log.debug("Getting summary embeds")
-        for event in self.events.queue:
-            log.debug("Summary event found for channel %s", event.subscription.channel_id)
-            if channel_id and channel_id != event.subscription.channel_id:
-                log.debug("Skipping event for other channel")
+
+        for subscription in self.data.subscriptions:
+            if channel_id and channel_id != subscription.channel_id:
                 continue
-            event_tz = tz.gettz(event.calendar_tz)
-            period = "{}".format(self.dtf(event.start.astimezone(event_tz)))
-            if event.end:
-                if event.end == event.start + timedelta(days=1):
-                    # All day event, one day. Let's assume this event ends EOD
-                    event_end = event.end - timedelta(seconds=1)
-                    period = "{}".format(self.dtf(event_end.astimezone(event_tz)))
-                else:
-                    period = "{} to {}".format(self.dtf(event.start.astimezone(event_tz)),
-                        self.dtf(event.end.astimezone(event_tz)))
-            embed = embeds.setdefault(event.subscription.channel_id, embed.copy())
-            embed.add_field(name=event.title,value=period, inline=True)
+            calendar_user = self.data.users.get(subscription.user_id)
+            for event in sorted(subscription.events(calendar_user.refresh_token),
+                    key=lambda x: x.start):
+                log.debug("Summary event found for channel %s", event.subscription.channel_id)
+                event_tz = tz.gettz(event.timezone)
+                period = "{}".format(self.dtf(event.start.astimezone(event_tz)))
+                if event.end:
+                    if event.end == event.start + timedelta(days=1):
+                        # All day event, one day. Let's assume this event ends EOD
+                        event_end = event.end - timedelta(seconds=1)
+                        period = "{}".format(self.dtf(event_end.astimezone(event_tz)))
+                    else:
+                        period = "{} to {}".format(self.dtf(event.start.astimezone(event_tz)),
+                            self.dtf(event.end.astimezone(event_tz)))
+                embed = embeds.setdefault(subscription.channel_id, embed.copy())
+                embed.add_field(name=event.title,value=period, inline=True)
         return embeds
 
     def collect_next_events(self):
-        while not self.events.empty():
-            self.events.get()
+        self.events.queue.clear()
         for subscription in self.data.subscriptions:
             calendar_user = self.data.users.get(subscription.user_id)
-            calendar = GoogleCalendar(calendar_id=subscription.calendar_id,
-                    refresh_token=calendar_user.refresh_token)
-            now = datetime.utcnow().replace(tzinfo=tzutc())
-            time_min = rfc3339.generate(now)
-            time_max = rfc3339.generate(now + timedelta(days=7))
-            calendar_items = calendar.list_events(orderBy="startTime", timeMin=time_min,
-                    timeMax=time_max,singleEvents=True)["items"]
-            for item in calendar_items:
-                start_time = None
-                end_time = None
-                calendar_tz = item["start"].get("timeZone", calendar.get_info()["timeZone"])
-                if "dateTime" in item["start"]:
-                    start_time = rfc3339.parse(item["start"]["dateTime"])
-                else:
-                    start_time = datetime.strptime(item["start"]["date"], '%Y-%m-%d') \
-                        .replace(hour=0,minute=0,second=0,
-                                tzinfo=tz.gettz(calendar_tz))
-                start_time = start_time.astimezone(tzutc())
-                if item["end"]:
-                    if "dateTime" in item["end"]:
-                        end_time = rfc3339.parse(item["end"]["dateTime"])
-                    else:
-                        end_time = datetime.strptime(item["end"]["date"], '%Y-%m-%d') \
-                            .replace(hour=0,minute=0,second=0,
-                                    tzinfo=tz.gettz(calendar_tz))
-                    end_time = end_time.astimezone(tzutc())
-                title = item["summary"]
-                description = item.get("description")
-                event = Event(
-                        start=start_time,
-                        end=end_time,
-                        title=title,
-                        description=description,
-                        subscription=subscription,
-                        calendar_tz=calendar_tz)
-                self.events.put(event)
+            for event in subscription.events(calendar_user.refresh_token):
+                for reminder in event.reminders:
+                    self.events.put(CalendarQueueItem(time=reminder,item=event))
 
     @commands.group()
     async def cal(self, ctx):
@@ -212,9 +192,13 @@ class Calendar(commands.Cog):
         Calendar Commands
         """
 
-    @cal.command()
-    @commands.is_owner()
+    @cal.group()
     async def debug(self, ctx):
+        """Calendar Debug Commands"""
+
+    @debug.command()
+    @commands.is_owner()
+    async def dump(self, ctx):
         """
         Outputs debug information
         """
@@ -222,7 +206,7 @@ class Calendar(commands.Cog):
         if self.next_execution:
             next_execution = rfc3339.generate(self.next_execution)
         now = datetime.utcnow().replace(tzinfo=tzutc())
-        now = "{}, DOW {}, HR {}".format(rfc3339.generate(now), now.weekday, now.hour)
+        now = "{}, DOW {}, HR {}".format(rfc3339.generate(now), now.weekday(), now.hour)
         summary = "No summary"
         if self.data.summary_day:
             summary = "DOW {}, HR {}".format(self.data.summary_day, self.data.summary_hour)
@@ -235,18 +219,26 @@ class Calendar(commands.Cog):
             "Summary: {}\n"
             "Events in queue: {}\n"
             "Subscriptions:\n"
-            "  {}\n"
+            "{}\n"
             "```").format(
             now,
             next_execution,
             summary,
             self.events.qsize(),
-            "\n".join(["  {}".format(x) for x in subscriptions])
+            "\n".join(["  {}".format(x) for x in subscriptions]),
             )
         await ctx.channel.send(message)
+        for queue_event in self.events.queue:
+            await ctx.channel.send("```{}```".format(queue_event))
+
+    @debug.command()
+    @commands.is_owner()
+    async def summary(self, ctx, sub_chan : discord.TextChannel):
+        for _, embed in self.summary_embeds(sub_chan.id).items():
+            await ctx.channel.send(embed=embed)
 
     @cal.command()
-    async def summary(self, ctx):
+    async def events(self, ctx):
         """
         Outputs upcoming events
         """
@@ -298,15 +290,14 @@ class Calendar(commands.Cog):
         else:
             refresh_token = self.data.users.get(user.id).refresh_token
             calendar = GoogleCalendar(calendar_id=calendar_id, refresh_token=refresh_token)
-            info = calendar.get_info()
-            subscription = Subscription(calendar_id=info["id"], user_id=user.id,
+            subscription = Subscription(calendar_id=calendar_id, user_id=user.id,
                     channel_id=sub_chan.id, guild_id=channel.guild.id)
             if subscription in self.data.subscriptions:
                 await channel.send("Already subscribed!")
                 return
             self.data.subscriptions.append(subscription)
             self.data.save()
-            await channel.send("Subscribed {} to {}".format(sub_chan, info['summary']))
+            await channel.send("Subscribed {} to {}".format(sub_chan, calendar.info.title))
 
     @cal.command()
     async def unsubscribe(self, ctx, calendar_id : str, sub_chan : discord.TextChannel):
