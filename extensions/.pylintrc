@@ -1,4 +1,0 @@
-[MASTER]
-disable=
-  missing-function-docstring,
-  no-self-use
