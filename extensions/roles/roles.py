@@ -23,57 +23,57 @@ class Roles(commands.Cog):
         roles_list = []
         async with ctx.typing():
             roles_list = self.get_roles_list(ctx.guild)
-            if len(roles_list) > 0:
-                await ctx.send("```{}```".format("\n".join([role.name for role in roles_list])))
-                return
+        if len(roles_list) > 0:
+            await ctx.send("```{}```".format("\n".join([role.name for role in roles_list])))
+        else:
             await ctx.send("I couldn't find any roles!")
 
     @role.command()
     @commands.guild_only()
     async def add(self, ctx, *, roles: str):
         """Add a role to your account"""
-        async with ctx.typing():
-            role_list = self.role_inflator(ctx.guild, roles)
-            if len(role_list) > 0:
-                try:
-                    await ctx.user.add_roles(*role_list)
-                except Forbidden:
-                    await ctx.send("I'm not allowed to add that role!")
+        role_list = []
+        try:
+            async with ctx.typing():
+                role_list = self.role_inflator(ctx.guild, roles)
+                if len(role_list) == 0:
+                    await ctx.send("I don't know what you mean!")
                     return
-                await ctx.send(
-                    "I added {} to {}!".format(
-                        ctx.user.name, ",".join([role.name for role in role_list])
-                    )
-                )
-                return
-            await ctx.send("I don't know what you mean!")
+                await ctx.user.add_roles(*role_list)
+        except Forbidden:
+            await ctx.send("I'm not allowed to add that role!")
+            return
+        await ctx.send(
+            "I added {} to {}!".format(ctx.user.name, ",".join([role.name for role in role_list]))
+        )
 
     @role.command(description="Remove yourself from a role")
     @commands.guild_only()
     async def remove(self, ctx, *, roles: str):
         """Remove a role from your account"""
-        async with ctx.typing():
-            role_list = self.role_inflator(ctx.guild, roles)
-            if len(role_list) > 0:
-                try:
-                    await ctx.user.remove_roles(*role_list)
-                except Forbidden:
-                    await ctx.send("I'm not allowed to remove that role!")
+        role_list = []
+        try:
+            async with ctx.typing():
+                role_list = self.role_inflator(ctx.guild, roles)
+                if len(role_list) == 0:
+                    await ctx.send("I don't know what you mean!")
                     return
-                await ctx.send(
-                    "I removed {} from {}!".format(
-                        ctx.user.name, ",".join([role.name for role in role_list])
-                    )
-                )
-                return
-            await ctx.send("I don't know what you mean!")
+                await ctx.user.remove_roles(*role_list)
+        except Forbidden:
+            await ctx.send("I'm not allowed to remove that role!")
+            return
+        await ctx.send(
+            "I removed {} from {}!".format(
+                ctx.user.name, ",".join([role.name for role in role_list])
+            )
+        )
 
     def get_roles_list(self, guild):
         """Gets the list of roles the bot is allowed to operate on"""
-        everyone = guild.default_role.id
+        everyone = guild.default_role
         bot = guild.me.top_role
 
-        roles = [r for r in guild.roles if r != everyone and r < bot]
+        roles = [r for r in guild.roles if r != everyone and r <= bot]
         roles.reverse()
         return roles
 
