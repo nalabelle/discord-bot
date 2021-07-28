@@ -1,0 +1,73 @@
+{
+   "results" : [
+      {
+         "address_components" : [
+            {
+               "long_name" : "600",
+               "short_name" : "600",
+               "types" : [ "subpremise" ]
+            },
+            {
+               "long_name" : "450",
+               "short_name" : "450",
+               "types" : [ "street_number" ]
+            },
+            {
+               "long_name" : "North Roxbury Drive",
+               "short_name" : "N Roxbury Dr",
+               "types" : [ "route" ]
+            },
+            {
+               "long_name" : "Beverly Hills",
+               "short_name" : "Beverly Hills",
+               "types" : [ "locality", "political" ]
+            },
+            {
+               "long_name" : "Los Angeles County",
+               "short_name" : "Los Angeles County",
+               "types" : [ "administrative_area_level_2", "political" ]
+            },
+            {
+               "long_name" : "California",
+               "short_name" : "CA",
+               "types" : [ "administrative_area_level_1", "political" ]
+            },
+            {
+               "long_name" : "United States",
+               "short_name" : "US",
+               "types" : [ "country", "political" ]
+            },
+            {
+               "long_name" : "90210",
+               "short_name" : "90210",
+               "types" : [ "postal_code" ]
+            }
+         ],
+         "formatted_address" : "450 N Roxbury Dr #600, Beverly Hills, CA 90210, USA",
+         "geometry" : {
+            "location" : {
+               "lat" : 34.0683231,
+               "lng" : -118.4069666
+            },
+            "location_type" : "ROOFTOP",
+            "viewport" : {
+               "northeast" : {
+                  "lat" : 34.0696720802915,
+                  "lng" : -118.4056176197085
+               },
+               "southwest" : {
+                  "lat" : 34.0669741197085,
+                  "lng" : -118.4083155802915
+               }
+            }
+         },
+         "place_id" : "ChIJ0X23Lgi8woARbiCgULcWgqQ",
+         "plus_code" : {
+            "compound_code" : "3H9V+86 Beverly Hills, CA, USA",
+            "global_code" : "85633H9V+86"
+         },
+         "types" : [ "establishment", "health", "hospital", "point_of_interest" ]
+      }
+   ],
+   "status" : "OK"
+}
