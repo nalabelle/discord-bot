@@ -39,12 +39,12 @@ class Roles(commands.Cog):
                 if len(role_list) == 0:
                     await ctx.send("I don't know what you mean!")
                     return
-                await ctx.user.add_roles(*role_list)
+                await ctx.message.author.add_roles(*role_list)
         except Forbidden:
             await ctx.send("I'm not allowed to add that role!")
             return
         await ctx.send(
-            "I added {} to {}!".format(ctx.user.name, ",".join([role.name for role in role_list]))
+            "I added {} to {}!".format(ctx.message.author.name, ",".join([role.name for role in role_list]))
         )
 
     @role.command(description="Remove yourself from a role")
@@ -58,13 +58,13 @@ class Roles(commands.Cog):
                 if len(role_list) == 0:
                     await ctx.send("I don't know what you mean!")
                     return
-                await ctx.user.remove_roles(*role_list)
+                await ctx.message.author.remove_roles(*role_list)
         except Forbidden:
             await ctx.send("I'm not allowed to remove that role!")
             return
         await ctx.send(
             "I removed {} from {}!".format(
-                ctx.user.name, ",".join([role.name for role in role_list])
+                ctx.message.author.name, ",".join([role.name for role in role_list])
             )
         )
 
