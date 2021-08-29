@@ -11,7 +11,7 @@ class ExtensionAdmin(commands.Cog):
         self.bot = bot
 
     def extension_path(self, ext: str) -> Path:
-        path = Path(self.bot.data_path, 'extensions', ext)
+        path = Path(self.bot.data_path, '../extensions', ext)
         path = path.relative_to(Path('.').resolve())
         return path
 
