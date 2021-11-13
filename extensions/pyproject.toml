@@ -29,7 +29,7 @@ datafile = { git = "https://github.com/nalabelle/py-datafile.git", branch = "mai
 file-secrets = {git = "https://github.com/nalabelle/py-file_secrets.git", branch = "main"}
 geocoder = "^1.38.1"
 giphypop = "^0.3"
-google-api-python-client = "^1.9.3"
+google-api-python-client = "^2.0.0"
 google-auth-httplib2 = "^0.1.0"
 google-auth-oauthlib = "^0.4.1"
 py-rolldice = {git = "https://github.com/Fiona1729/py-rolldice.git"}
