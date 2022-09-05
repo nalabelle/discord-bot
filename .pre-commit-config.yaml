@@ -26,6 +26,22 @@ repos:
         exclude: ^home\/\..+$
       - id: script-must-not-have-extension
       - id: shellcheck
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+  - repo: https://github.com/pycqa/flake8
+    rev: 4.0.1
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-comprehensions
+          - flake8-simplify
+  - repo: https://github.com/psf/black
+    rev: 22.8.0
+    hooks:
+    - id: black
 #  - repo: https://github.com/kynan/nbstripout
 #    rev: 0.5.0
 #    hooks:

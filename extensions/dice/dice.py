@@ -24,7 +24,7 @@ class Roll:
 
 
 class Dice(commands.Cog):
-    """ Dice commands """
+    """Dice commands"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -43,10 +43,10 @@ class Dice(commands.Cog):
         await channel.send(content=text)
 
 
-def setup(bot):
+async def setup(bot):
     cog = Dice(bot)
-    bot.add_cog(cog)
+    await bot.add_cog(cog)
 
 
-def teardown(bot):
-    bot.remove_cog("Dice")
+async def teardown(bot):
+    await bot.remove_cog("Dice")

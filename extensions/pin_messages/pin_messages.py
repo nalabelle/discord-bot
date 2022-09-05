@@ -1,7 +1,8 @@
 from discord.ext import commands
 
+
 class PinMessages(commands.Cog):
-    """ Pins and Unpins messages based on emoji """
+    """Pins and Unpins messages based on emoji"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -15,7 +16,7 @@ class PinMessages(commands.Cog):
         emoji = reaction.emoji
         if emoji is None:
             return
-        if str(emoji) == '📌':
+        if str(emoji) == "📌":
             if message.pinned:
                 return
             added_by = ""
@@ -34,19 +35,21 @@ class PinMessages(commands.Cog):
         emoji = reaction.emoji
         if emoji is None:
             return
-        if str(emoji) == '📌':
+        if str(emoji) == "📌":
             if not message.pinned:
                 return
             reactions = [str(x) for x in message.reactions]
-            if '📌' in reactions:
+            if "📌" in reactions:
                 return
             # we only know who added emojis, discord api doesn't say who cleared
             reason = "📌 emoji removed"
             await message.unpin(reason=reason)
 
-def setup(bot):
-    cog = PinMessages(bot)
-    bot.add_cog(cog)
 
-def teardown(bot):
-    bot.remove_cog('PinMessages')
+async def setup(bot):
+    cog = PinMessages(bot)
+    await bot.add_cog(cog)
+
+
+async def teardown(bot):
+    await bot.remove_cog("PinMessages")

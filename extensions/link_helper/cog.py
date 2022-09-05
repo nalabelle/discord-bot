@@ -4,7 +4,6 @@ Discord Cog for Link Helper
 
 import logging
 import re
-from abc import ABC
 
 import discord
 import requests
@@ -32,7 +31,7 @@ IMGUR_IMAGE_RE = re.compile(r"^{}/([\w]+)$".format(IMGUR_PREFIX), re.I)
 IMGUR_IMAGE_API = "https://api.imgur.com/3/image/{}?client_id=546c25a59c58ad7"
 
 
-class WebClient(ABC):  # pylint: disable=too-few-public-methods
+class WebClient:
     """WebClient base class for HTTP Classes"""
 
     def _fetch(self, url):
@@ -114,11 +113,11 @@ class LinkHelper(commands.Cog, name="LinkHelper"):
                 await message.add_reaction("🔊")
 
 
-def setup(bot):
+async def setup(bot):
     """Cog creation"""
-    bot.add_cog(LinkHelper(bot))
+    await bot.add_cog(LinkHelper(bot))
 
 
-def teardown(bot):
+async def teardown(bot):
     """Cog teardown"""
-    bot.remove_cog("LinkHelper")
+    await bot.remove_cog("LinkHelper")

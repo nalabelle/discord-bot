@@ -1,5 +1,6 @@
 /data/*
 !/data/config.yml
+/secrets
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
