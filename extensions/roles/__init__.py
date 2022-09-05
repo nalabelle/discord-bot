@@ -1,9 +1,10 @@
 from .roles import Roles
 
-def setup(bot):
+
+async def setup(bot):
     cog = Roles(bot)
-    bot.add_cog(cog)
+    await bot.add_cog(cog)
 
-def teardown(bot):
-    bot.remove_cog('Roles')
 
+async def teardown(bot):
+    await bot.remove_cog("Roles")

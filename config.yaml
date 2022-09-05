@@ -1,0 +1,35 @@
+command_prefix: .
+data_path: data
+extension_path: extensions
+extensions:
+  - name: channel_notifier
+    intents:
+      - guilds
+  - name: dice
+    intents:
+      - messages
+  - name: link_helper
+    intents:
+      - messages
+      - message_content
+  - name: pin_messages
+    intents:
+      - reactions
+  - name: repost
+    intents:
+      - messages
+      - message_content
+  - name: roles
+    intents:
+      - messages
+  - name: status
+    intents:
+      - messages
+  - name: topic_notifier
+    intents:
+      - guilds
+  - name: weather
+    intents:
+      - messages
+log_level: DEBUG
+discord_log_level: WARN

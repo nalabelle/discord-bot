@@ -1,9 +1,10 @@
 from .topic_notifier import TopicNotifier
 
-def setup(bot):
+
+async def setup(bot):
     cog = TopicNotifier(bot)
-    bot.add_cog(cog)
+    await bot.add_cog(cog)
 
-def teardown(bot):
-    bot.remove_cog('TopicNotifier')
 
+async def teardown(bot):
+    await bot.remove_cog("TopicNotifier")
