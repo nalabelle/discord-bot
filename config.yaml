@@ -1,4 +1,4 @@
-command_prefix: .
+command_prefix: !
 data_path: data
 extension_path: extensions
 extensions:

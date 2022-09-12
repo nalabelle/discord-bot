@@ -1,21 +1,26 @@
-FROM python:3-buster
+FROM python:3.10
+
 ENV PYTHONIOENCODING="UTF-8"
 
-COPY / /app/
+ENV POETRY_VERSION=1.2.0
+ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VENV=/opt/poetry-venv
+ENV POETRY_CACHE_DIR=/opt/.cache
+
+RUN python3 -m venv $POETRY_VENV \
+    && $POETRY_VENV/bin/pip install -U pip setuptools \
+    && $POETRY_VENV/bin/pip install poetry==${POETRY_VERSION}
+
+ENV PATH="${PATH}:${POETRY_VENV}/bin"
+
 WORKDIR /app
 
-RUN \
- pip install --no-cache-dir -U -r /app/requirements.txt && \
- rm -rf \
-   /root/.cache \
-   /tmp/*
+# Install dependencies
+COPY poetry.lock pyproject.toml ./
+RUN poetry install
 
-RUN \
- pip install --no-cache-dir -U -r /app/extensions/requirements.txt && \
- rm -rf \
-   /root/.cache \
-   /tmp/*
+# Run your app
+COPY . /app
 
 VOLUME /app/data
-ENTRYPOINT ["python3", "/app/bot.py"]
-CMD ["--data", "/app/data", "--config", "/app/data/config.yml"]
+CMD [ "poetry", "run", "python", "-m", "discord_bot", "--config", "/app/config.yaml" ]
