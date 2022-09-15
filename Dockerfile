@@ -22,4 +22,4 @@ COPY . /app
 RUN poetry install
 
 VOLUME /app/data
-CMD [ "poetry", "run", "python", "-m", "discord_bot"]
+ENTRYPOINT [ "poetry", "run", "python", "-m", "discord_bot"]
