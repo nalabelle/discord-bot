@@ -22,4 +22,4 @@ COPY . /app
 RUN poetry install
 
 VOLUME /app/data
-CMD [ "poetry", "run", "python", "-m", "discord_bot", "--config", "/app/config.yaml" ]
+CMD [ "poetry", "run", "python", "-m", "discord_bot"]
