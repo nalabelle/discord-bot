@@ -1,7 +1,11 @@
-command_prefix: !
+command_prefix: "!"
 data_path: data
 extension_path: extensions
 extensions:
+  - name: sync
+    intents:
+      - guilds
+      - message_content
   - name: channel_notifier
     intents:
       - guilds
