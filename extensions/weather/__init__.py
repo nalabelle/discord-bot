@@ -1,8 +1,7 @@
-async def setup(bot):
-    from .weather import Weather
+"""
+Weather Extension
+"""
 
-    await bot.add_cog(Weather(bot))
+__all__ = ["setup", "teardown"]
 
-
-async def teardown(bot):
-    await bot.remove_cog("Weather")
+from extensions.weather.cmd import setup, teardown
