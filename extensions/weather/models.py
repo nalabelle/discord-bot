@@ -144,7 +144,7 @@ class Temp(float):
     @classmethod
     def validate(cls, val):
         """Validates input, for pydantic"""
-        if isinstance(val, float):
+        if isinstance(val, (int, float)):
             return cls(float(val))
         raise ValueError(f"{val} is not a valid temperature")
 
@@ -171,7 +171,7 @@ class Speed(float):
     @classmethod
     def validate(cls, val):
         """Validates input, for pydantic"""
-        if isinstance(val, float):
+        if isinstance(val, (int, float)):
             return cls(val)
         raise ValueError(f"{val} is not a valid speed")
 
