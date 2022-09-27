@@ -23,9 +23,9 @@ extensions:
     intents:
       - messages
       - message_content
-  - name: roles
+  - name: role
     intents:
-      - messages
+      - guilds
   - name: status
     intents:
       - messages
