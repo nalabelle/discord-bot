@@ -125,7 +125,6 @@ async def setup(bot):
     data = RepostData.from_yaml(bot.data / DATAFILE)
     await bot.add_cog(RepostCog(bot, data))
     bot.tree.add_command(RepostCommand(repost_data=data))
-    await bot.tree.sync()
 
 
 async def teardown(bot):

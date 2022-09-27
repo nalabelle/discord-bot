@@ -36,16 +36,16 @@ class DiscordBot(commands.Bot):
             try:
                 await super(commands.Bot, self).load_extension(name=package)
             except Exception as e:
-                log.exception("Could not load {}: {}".format(ext.name, e))
+                log.exception("Could not load %s: %s", ext.name, e)
             else:
-                log.info("Loaded extension: {}".format(ext.name))
+                log.info("Loaded extension: %s", ext.name)
 
     def __init__(self, config: BotConfig):
         self.config = discord_bot.config.load(config_path=config)
         logging.getLogger().setLevel(self.config.log_level.value)
         log.setLevel(self.config.log_level.value)
-        log.debug(f"Logging at {logging.getLevelName(log.level)}")
-        log.debug(f"Configuration: {self.config.json()}")
+        log.debug("Logging at %s", logging.getLevelName(log.level))
+        log.debug("Configuration: %s", self.config.json())
         discord.utils.setup_logging(level=self.config.discord_log_level.value, root=False)
 
         self.data = Path(self.config.data_path)
