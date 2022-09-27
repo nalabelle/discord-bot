@@ -123,17 +123,21 @@ class RoleCommand(app_commands.Group, name="role"):
     async def add(self, interaction: discord.Interaction) -> None:
         """Add a role to your account"""
         try:
-            await interaction.response.send_message(view=RoleView.role_add(interaction))
+            await interaction.response.send_message(
+                view=RoleView.role_add(interaction), ephemeral=True
+            )
         except ValueError as err:
-            await interaction.response.send_message(content=str(err))
+            await interaction.response.send_message(content=str(err), ephemeral=True)
 
     @app_commands.command()
     async def remove(self, interaction: discord.Interaction) -> None:
         """Remove a role from your account"""
         try:
-            await interaction.response.send_message(view=RoleView.role_remove(interaction))
+            await interaction.response.send_message(
+                view=RoleView.role_remove(interaction), ephemeral=True
+            )
         except ValueError as err:
-            await interaction.response.send_message(content=str(err))
+            await interaction.response.send_message(content=str(err), ephemeral=True)
 
 
 async def setup(bot):
