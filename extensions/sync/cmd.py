@@ -26,7 +26,7 @@ class SyncCommand(commands.Cog, name="Sync"):
         self,
         ctx: commands.Context,
         guilds: Greedy[discord.Guild],
-        flag: Optional[Literal["~", "*", "^"]] = None,
+        flag: Optional[Literal["~", "*", "^", "!"]] = None,
     ) -> None:
         """
         Syncs Discord AppCommands with Guilds. No arg will sync globally
@@ -38,6 +38,7 @@ class SyncCommand(commands.Cog, name="Sync"):
             ~ to sync the current guild
             * to copy global app commands to this guild and sync
             ^ clear all commands from the guild and sync
+            ! clear all commmands from all guilds and sync
         """
         synced = []
         log.debug("Commands: %s", ", ".join([c.name for c in ctx.bot.tree.walk_commands()]))
@@ -50,7 +51,10 @@ class SyncCommand(commands.Cog, name="Sync"):
                     synced = await ctx.bot.tree.sync(guild=ctx.guild)
                 case "^":
                     ctx.bot.tree.clear_commands(guild=ctx.guild)
-                    await ctx.bot.tree.sync(guild=ctx.guild)
+                    synced = await ctx.bot.tree.sync(guild=ctx.guild)
+                case "!":
+                    ctx.bot.tree.clear_commands(guild=None)
+                    synced = await ctx.bot.tree.sync()
                 case _:
                     synced = await ctx.bot.tree.sync()
             await ctx.send(
