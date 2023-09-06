@@ -6,6 +6,6 @@
     ":rebaseStalePrs"
   ],
   "schedule": [
-    "every tuesday"
+    "on tuesday"
   ]
 }
