@@ -1,6 +1,9 @@
 {
   "extends": [
-    "config:base"
+    "config:best-practices",
+    ":automergeMinor",
+    ":automergeDigest",
+    ":rebaseStalePrs"
   ],
   "schedule": [
     "every tuesday"
