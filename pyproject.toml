@@ -28,7 +28,7 @@ py-rolldice = "^0.4.0"
 geocoder = "^1.38.1"
 python-forecastio = "^1.4.0"
 beautifulsoup4 = "^4.11.1"
-pydantic-yaml = "^0.11.0"
+pydantic-yaml = "^1.0.0"
 
 
 [tool.poetry.group.dev.dependencies]
