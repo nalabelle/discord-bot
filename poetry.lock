@@ -996,13 +996,13 @@ typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
 name = "pydantic-yaml"
-version = "1.1.1"
+version = "1.1.2"
 description = "Adds some YAML functionality to the excellent `pydantic` library."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pydantic_yaml-1.1.1-py3-none-any.whl", hash = "sha256:cae9461216f0a7945d8dae05557b32fc4be77ee0f29541d45f1abcfd13a02afb"},
-    {file = "pydantic_yaml-1.1.1.tar.gz", hash = "sha256:1c7bfcb1c4cb5d74dd3d764b098785297df63d7a4833bd258317a2000b4c5fc7"},
+    {file = "pydantic_yaml-1.1.2-py3-none-any.whl", hash = "sha256:c0d019d38222f5af72ba22997d77b3d0ab17367be7853b70776673fda2551dc0"},
+    {file = "pydantic_yaml-1.1.2.tar.gz", hash = "sha256:d140be787a4edb8d354ed13fb8d41579c328e383ba7e7de7b64dc0ef90f19e1a"},
 ]
 
 [package.dependencies]
