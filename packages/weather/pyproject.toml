@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "weather"
+version = "0.1.0"
+description = ""
+authors = ["nalabelle <git@nalabelle.com>"]
+readme = "README.md"
+packages = [{include = "weather"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.31.0"
+geocoder = "^1.38.1"
+cattrs = "^23.2.3"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.11.0"
+pyright = "^1.1.338"
+ruff = "^0.1.6"
+pytest = "^7.4.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
