@@ -1,4 +1,4 @@
-FROM python:3.11@sha256:e69cdf515bff37a9081cee4cd36aa287adbf607fd8ed0e6c9d6fd1ace9f19c4e
+FROM python:3.11@sha256:0698431f4610b4cad4ccea2b3e2754dfbb61ac4c553bbd2b044d716a917f2cdc
 
 ENV PYTHONIOENCODING="UTF-8"
 
