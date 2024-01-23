@@ -1,9 +1,9 @@
-FROM python:3.11@sha256:a2f76e7c73c241d15e867987f143dfbdcf280fb229ae1ecde98850504fd3b234
+FROM python:3.12@sha256:a09f71f4af992ddf9a620330fed343c850c371251be45c3f9bb46ebeca49c9c6
 
 ENV PYTHONIOENCODING="UTF-8"
 
 # renovate: datasource=github-releases depName=python-poetry/poetry
-ENV POETRY_VERSION=1.3.1
+ENV POETRY_VERSION=1.7.1
 ENV POETRY_HOME=/opt/poetry
 ENV POETRY_VENV=/opt/poetry-venv
 ENV POETRY_CACHE_DIR=/opt/.cache
